@@ -1,0 +1,20 @@
+# Build outputs
+backend/target/
+frontend/dist/
+
+# Dependencies and local caches
+frontend/node_modules/
+frontend/.npm-cache/
+
+# IDE and OS files
+.agents/
+.codex/
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
