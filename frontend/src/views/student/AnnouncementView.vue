@@ -20,12 +20,6 @@ onMounted(loadData)
 
 <template>
   <div class="page" v-loading="loading">
-    <div class="page-header">
-      <div>
-        <h2 class="page-title">公告通知</h2>
-        <p class="page-subtitle">查看学校发布的迎新安排</p>
-      </div>
-    </div>
     <section class="notice-list">
       <article v-for="item in list" :key="item.id" class="notice-item">
         <div>

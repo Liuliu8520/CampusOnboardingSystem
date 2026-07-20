@@ -1,15 +1,20 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Check, Delete, Edit, Plus, RefreshLeft } from '@element-plus/icons-vue'
+import { Check, Delete, Edit, Plus, RefreshLeft, Tickets } from '@element-plus/icons-vue'
 import { adminApi } from '@/api/modules'
-import type { Student } from '@/types'
+import type { College, Major, Student, StudentFeeStatus } from '@/types'
 
 const loading = ref(false)
 const dialogVisible = ref(false)
+const paymentDialogVisible = ref(false)
 const saving = ref(false)
+const paymentSaving = ref(false)
 const total = ref(0)
 const list = ref<Student[]>([])
+const colleges = ref<College[]>([])
+const majors = ref<Major[]>([])
+const paymentStudent = ref<Student>()
 const query = reactive({
   page: 1,
   size: 10,
@@ -32,6 +37,12 @@ const form = reactive<Student>({
   paid: false,
   checkedIn: false
 })
+const paymentForm = reactive({
+  paidFeeItemIds: [] as number[]
+})
+
+const queryMajorOptions = computed(() => query.college ? majorsByCollege(query.college) : majors.value)
+const formMajorOptions = computed(() => form.college ? majorsByCollege(form.college) : [])
 
 function resetForm() {
   Object.assign(form, {
@@ -48,6 +59,24 @@ function resetForm() {
     paid: false,
     checkedIn: false
   })
+}
+
+function collegeIdByName(name: string) {
+  return colleges.value.find((item) => item.name === name)?.id
+}
+
+function majorsByCollege(collegeName: string) {
+  const collegeId = collegeIdByName(collegeName)
+  return collegeId ? majors.value.filter((item) => item.collegeId === collegeId) : []
+}
+
+async function loadAcademics() {
+  const [collegeData, majorData] = await Promise.all([
+    adminApi.colleges(),
+    adminApi.majors()
+  ])
+  colleges.value = collegeData
+  majors.value = majorData
 }
 
 async function loadData() {
@@ -72,6 +101,12 @@ function openEdit(row: Student) {
   dialogVisible.value = true
 }
 
+function openPayments(row: Student) {
+  paymentStudent.value = row
+  paymentForm.paidFeeItemIds = row.paymentStatuses?.filter((item) => item.paid).map((item) => item.feeItemId) || []
+  paymentDialogVisible.value = true
+}
+
 async function save() {
   if (!form.studentId || !form.name || !form.gender || !form.college || !form.major || !form.className) {
     ElMessage.warning('请填写完整的学生基础信息')
@@ -85,6 +120,21 @@ async function save() {
     await loadData()
   } finally {
     saving.value = false
+  }
+}
+
+async function savePayments() {
+  if (!paymentStudent.value?.id) {
+    return
+  }
+  paymentSaving.value = true
+  try {
+    await adminApi.updateStudentPayments(paymentStudent.value.id, paymentForm.paidFeeItemIds)
+    ElMessage.success('缴费状态已更新')
+    paymentDialogVisible.value = false
+    await loadData()
+  } finally {
+    paymentSaving.value = false
   }
 }
 
@@ -112,7 +162,37 @@ function search() {
   loadData()
 }
 
-onMounted(loadData)
+function onQueryCollegeChange() {
+  query.major = ''
+}
+
+function onFormCollegeChange() {
+  form.major = ''
+}
+
+function paymentTagType(item: StudentFeeStatus) {
+  if (item.paid) return 'success'
+  return item.required ? 'danger' : 'info'
+}
+
+function paymentTooltip(item: StudentFeeStatus) {
+  return `${item.name}：￥${formatAmount(item.amount)}，${item.required ? '必缴' : '选缴'}，${item.paid ? '已缴' : '未缴'}`
+}
+
+function requiredSummary(row: Student) {
+  if (row.requiredFeeTotal === undefined || row.requiredFeePaidCount === undefined) {
+    return row.paid ? '必缴已完成' : '必缴未完成'
+  }
+  return `必缴 ${row.requiredFeePaidCount}/${row.requiredFeeTotal}`
+}
+
+function formatAmount(amount?: number) {
+  return Number(amount || 0).toFixed(2)
+}
+
+onMounted(async () => {
+  await Promise.all([loadAcademics(), loadData()])
+})
 </script>
 
 <template>
@@ -120,7 +200,6 @@ onMounted(loadData)
     <div class="page-header">
       <div>
         <h2 class="page-title">学生管理</h2>
-        <p class="page-subtitle">筛选学生、维护信息、重置密码和确认报到</p>
       </div>
       <el-button type="primary" :icon="Plus" @click="openCreate">新增学生</el-button>
     </div>
@@ -128,8 +207,12 @@ onMounted(loadData)
     <section class="panel">
       <div class="toolbar">
         <el-input v-model="query.keyword" placeholder="学号/姓名/手机号" clearable style="width: 220px" @keyup.enter="search" />
-        <el-input v-model="query.college" placeholder="学院" clearable style="width: 180px" @keyup.enter="search" />
-        <el-input v-model="query.major" placeholder="专业" clearable style="width: 180px" @keyup.enter="search" />
+        <el-select v-model="query.college" placeholder="学院" clearable filterable style="width: 180px" @change="onQueryCollegeChange">
+          <el-option v-for="item in colleges" :key="item.id" :label="item.name" :value="item.name" />
+        </el-select>
+        <el-select v-model="query.major" placeholder="专业" clearable filterable style="width: 190px">
+          <el-option v-for="item in queryMajorOptions" :key="item.id" :label="item.name" :value="item.name" />
+        </el-select>
         <el-select v-model="query.checkedIn" placeholder="报到状态" clearable style="width: 150px">
           <el-option label="已报到" :value="true" />
           <el-option label="未报到" :value="false" />
@@ -145,9 +228,22 @@ onMounted(loadData)
         <el-table-column prop="major" label="专业" min-width="140" />
         <el-table-column prop="className" label="班级" min-width="110" />
         <el-table-column prop="phone" label="手机号" min-width="130" />
-        <el-table-column label="缴费" width="90">
+        <el-table-column label="必缴汇总" width="110">
           <template #default="{ row }">
-            <el-tag :type="row.paid ? 'success' : 'warning'">{{ row.paid ? '已缴' : '未缴' }}</el-tag>
+            <el-tag :type="row.paid ? 'success' : 'danger'">{{ row.paid ? '已完成' : '未完成' }}</el-tag>
+            <div class="required-count">{{ requiredSummary(row) }}</div>
+          </template>
+        </el-table-column>
+        <el-table-column label="缴费项目" min-width="300">
+          <template #default="{ row }">
+            <div v-if="row.paymentStatuses?.length" class="payment-status-list">
+              <el-tooltip v-for="item in row.paymentStatuses" :key="item.feeItemId" :content="paymentTooltip(item)">
+                <el-tag class="payment-tag" size="small" :type="paymentTagType(item)" effect="light">
+                  {{ item.name }} {{ item.paid ? '已缴' : '未缴' }}
+                </el-tag>
+              </el-tooltip>
+            </div>
+            <el-tag v-else :type="row.paid ? 'success' : 'danger'">{{ row.paid ? '已缴' : '未缴' }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column label="报到" width="90">
@@ -155,10 +251,13 @@ onMounted(loadData)
             <el-tag :type="row.checkedIn ? 'success' : 'info'">{{ row.checkedIn ? '已报到' : '未报到' }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="270" fixed="right">
+        <el-table-column label="操作" width="318" fixed="right">
           <template #default="{ row }">
             <el-tooltip content="编辑">
               <el-button :icon="Edit" circle @click="openEdit(row)" />
+            </el-tooltip>
+            <el-tooltip content="缴费状态">
+              <el-button :icon="Tickets" circle type="primary" @click="openPayments(row)" />
             </el-tooltip>
             <el-tooltip content="重置密码">
               <el-button :icon="RefreshLeft" circle @click="resetPassword(row)" />
@@ -193,20 +292,47 @@ onMounted(loadData)
             <el-option label="女" value="女" />
           </el-select>
         </el-form-item>
-        <el-form-item label="学院"><el-input v-model="form.college" /></el-form-item>
-        <el-form-item label="专业"><el-input v-model="form.major" /></el-form-item>
+        <el-form-item label="学院">
+          <el-select v-model="form.college" class="wide-input" filterable @change="onFormCollegeChange">
+            <el-option v-for="item in colleges" :key="item.id" :label="item.name" :value="item.name" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="专业">
+          <el-select v-model="form.major" class="wide-input" filterable :disabled="!form.college">
+            <el-option v-for="item in formMajorOptions" :key="item.id" :label="item.name" :value="item.name" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="班级"><el-input v-model="form.className" /></el-form-item>
         <el-form-item label="手机号"><el-input v-model="form.phone" /></el-form-item>
         <el-form-item label="身份证号"><el-input v-model="form.idCard" /></el-form-item>
         <el-form-item label="家庭地址" class="wide"><el-input v-model="form.address" /></el-form-item>
         <el-form-item label="流程状态">
-          <el-checkbox v-model="form.paid">必缴已完成</el-checkbox>
           <el-checkbox v-model="form.checkedIn">已现场报到</el-checkbox>
         </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
         <el-button type="primary" :loading="saving" @click="save">保存</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="paymentDialogVisible" :title="`${paymentStudent?.name || ''} 缴费状态`" width="560px">
+      <el-checkbox-group v-if="paymentStudent?.paymentStatuses?.length" v-model="paymentForm.paidFeeItemIds" class="payment-check-list">
+        <el-checkbox
+          v-for="item in paymentStudent.paymentStatuses"
+          :key="item.feeItemId"
+          :label="item.feeItemId"
+          border
+          class="payment-check-item"
+        >
+          <span>{{ item.name }}</span>
+          <small>￥{{ formatAmount(item.amount) }} · {{ item.required ? '必缴' : '选缴' }}</small>
+        </el-checkbox>
+      </el-checkbox-group>
+      <el-empty v-else description="暂无缴费项目" />
+      <template #footer>
+        <el-button @click="paymentDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="paymentSaving" @click="savePayments">保存</el-button>
       </template>
     </el-dialog>
   </div>
@@ -220,5 +346,46 @@ onMounted(loadData)
 
 .wide-input {
   width: 100%;
+}
+
+.required-count {
+  margin-top: 4px;
+  color: var(--app-muted);
+  font-size: 12px;
+}
+
+.payment-status-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.payment-tag {
+  max-width: 150px;
+}
+
+.payment-check-list {
+  display: grid;
+  gap: 10px;
+}
+
+.payment-check-item {
+  width: 100%;
+  height: auto;
+  margin-right: 0;
+  padding: 10px 12px;
+}
+
+:deep(.payment-check-item .el-checkbox__label) {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  line-height: 1.35;
+}
+
+.payment-check-item small {
+  color: var(--app-muted);
+  font-size: 12px;
 }
 </style>

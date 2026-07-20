@@ -70,7 +70,6 @@ onMounted(loadData)
     <div class="page-header">
       <div>
         <h2 class="page-title">缴费项目管理</h2>
-        <p class="page-subtitle">配置学费、住宿费及选缴项目</p>
       </div>
       <el-button type="primary" :icon="Plus" @click="openCreate">新增项目</el-button>
     </div>

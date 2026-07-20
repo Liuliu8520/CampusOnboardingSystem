@@ -13,11 +13,15 @@ const router = createRouter({
       path: '/student',
       component: StudentLayout,
       meta: { role: 'STUDENT' },
-      redirect: '/student/onboarding',
+      redirect: '/student/home',
       children: [
-        { path: 'onboarding', component: () => import('@/views/student/OnboardingView.vue'), meta: { title: '报到流程' } },
-        { path: 'profile', component: () => import('@/views/student/ProfileView.vue'), meta: { title: '个人中心' } },
-        { path: 'announcements', component: () => import('@/views/student/AnnouncementView.vue'), meta: { title: '公告通知' } }
+        { path: 'home', component: () => import('@/views/student/HomeView.vue'), meta: { title: '首页' } },
+        { path: 'qualification', component: () => import('@/views/student/QualificationView.vue'), meta: { title: '个人信息' } },
+        { path: 'payment', component: () => import('@/views/student/PaymentView.vue'), meta: { title: '缴费' } },
+        { path: 'report', component: () => import('@/views/student/ReportView.vue'), meta: { title: '报到' } },
+        { path: 'announcements', component: () => import('@/views/student/AnnouncementView.vue'), meta: { title: '通知' } },
+        { path: 'onboarding', redirect: '/student/report' },
+        { path: 'profile', redirect: '/student/qualification' }
       ]
     },
     {
@@ -47,7 +51,7 @@ router.beforeEach((to) => {
     return '/login'
   }
   if (requiredRole && auth.role !== requiredRole) {
-    return auth.role === 'ADMIN' ? '/admin/dashboard' : '/student/onboarding'
+    return auth.role === 'ADMIN' ? '/admin/dashboard' : '/student/home'
   }
   return true
 })

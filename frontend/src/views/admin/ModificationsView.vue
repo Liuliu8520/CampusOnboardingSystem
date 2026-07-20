@@ -73,7 +73,6 @@ onMounted(loadData)
     <div class="page-header">
       <div>
         <h2 class="page-title">资格修改审核</h2>
-        <p class="page-subtitle">审核学生提交的录取/分班信息修改申请</p>
       </div>
       <el-button :icon="Refresh" @click="loadData">刷新</el-button>
     </div>

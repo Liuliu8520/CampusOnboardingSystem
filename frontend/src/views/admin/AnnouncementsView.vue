@@ -68,7 +68,6 @@ onMounted(loadData)
     <div class="page-header">
       <div>
         <h2 class="page-title">公告管理</h2>
-        <p class="page-subtitle">发布和维护迎新通知</p>
       </div>
       <el-button type="primary" :icon="Plus" @click="openCreate">发布公告</el-button>
     </div>

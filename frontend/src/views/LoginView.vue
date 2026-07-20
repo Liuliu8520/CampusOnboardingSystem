@@ -25,7 +25,7 @@ async function submit() {
   try {
     const result = await auth.login(form)
     ElMessage.success('登录成功')
-    router.push(result.role === 'ADMIN' ? '/admin/dashboard' : '/student/onboarding')
+    router.push(result.role === 'ADMIN' ? '/admin/dashboard' : '/student/home')
   } finally {
     loading.value = false
   }

@@ -123,7 +123,6 @@ onMounted(loadData)
     <div class="page-header">
       <div>
         <h2 class="page-title">报到流程</h2>
-        <p class="page-subtitle">当前阶段：{{ profile?.currentStepName || '-' }}</p>
       </div>
       <el-button :icon="Refresh" @click="loadData">刷新</el-button>
     </div>

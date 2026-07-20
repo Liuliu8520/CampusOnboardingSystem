@@ -2,17 +2,20 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { Bell, DocumentChecked, House, SwitchButton, User } from '@element-plus/icons-vue'
+import { Bell, CreditCard, HomeFilled, LocationFilled, SwitchButton, User } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 const activePath = computed(() => route.path)
+const pageTitle = computed(() => String(route.meta.title || '学生端'))
 
 const menus = [
-  { path: '/student/onboarding', label: '报到流程', icon: DocumentChecked },
-  { path: '/student/profile', label: '个人中心', icon: User },
-  { path: '/student/announcements', label: '公告通知', icon: Bell }
+  { path: '/student/home', label: '首页', icon: HomeFilled },
+  { path: '/student/qualification', label: '个人信息', icon: User },
+  { path: '/student/payment', label: '缴费', icon: CreditCard },
+  { path: '/student/report', label: '报到', icon: LocationFilled },
+  { path: '/student/announcements', label: '通知', icon: Bell }
 ]
 
 function logout() {
@@ -22,66 +25,115 @@ function logout() {
 </script>
 
 <template>
-  <div class="student-shell">
-    <header class="student-header">
-      <RouterLink to="/student/onboarding" class="student-brand">
-        <el-icon><House /></el-icon>
-        <span>高校迎新管理系统</span>
-      </RouterLink>
-      <el-menu :default-active="activePath" mode="horizontal" router class="student-menu">
+  <el-container class="student-shell">
+    <el-aside width="236px" class="student-aside">
+      <div class="brand">
+        <RouterLink to="/student/home" class="student-brand">
+          <el-icon><HomeFilled /></el-icon>
+          <div>
+            <strong>新生服务端</strong>
+            <span>Student Panel</span>
+          </div>
+        </RouterLink>
+      </div>
+      <el-menu :default-active="activePath" router class="side-menu">
         <el-menu-item v-for="item in menus" :key="item.path" :index="item.path">
           <el-icon><component :is="item.icon" /></el-icon>
           <span>{{ item.label }}</span>
         </el-menu-item>
       </el-menu>
-      <div class="student-user">
-        <span>{{ auth.displayName }}</span>
-        <el-tooltip content="退出登录">
-          <el-button :icon="SwitchButton" circle @click="logout" />
-        </el-tooltip>
-      </div>
-    </header>
-    <main class="student-main">
-      <RouterView />
-    </main>
-  </div>
+    </el-aside>
+
+    <el-container>
+      <el-header class="student-header">
+        <div>
+          <h1>{{ pageTitle }}</h1>
+        </div>
+        <div class="student-user">
+          <span>{{ auth.displayName }}</span>
+          <el-tooltip content="退出登录">
+            <el-button :icon="SwitchButton" circle @click="logout" />
+          </el-tooltip>
+        </div>
+      </el-header>
+      <el-main class="student-main">
+        <RouterView />
+      </el-main>
+    </el-container>
+  </el-container>
 </template>
 
 <style scoped>
 .student-shell {
   min-height: 100vh;
+  background: var(--app-bg);
 }
 
-.student-header {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  height: 68px;
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: 20px;
-  padding: 0 22px;
+.student-aside {
   background: #fff;
+  border-right: 1px solid var(--app-border);
+}
+
+.brand {
+  height: 76px;
+  display: flex;
+  align-items: center;
+  padding: 0 18px;
   border-bottom: 1px solid var(--app-border);
 }
 
 .student-brand {
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-weight: 800;
+  gap: 12px;
   white-space: nowrap;
+  font-weight: 800;
 }
 
 .student-brand .el-icon {
-  color: var(--app-primary);
-  font-size: 22px;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  color: #fff;
+  background: var(--app-primary);
+  flex: 0 0 auto;
 }
 
-.student-menu {
+.student-brand strong,
+.student-brand span {
+  display: block;
+}
+
+.student-brand span {
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--app-muted);
+}
+
+.side-menu {
   border-bottom: none;
-  min-width: 0;
+  border-right: none;
+  padding: 8px;
+}
+
+.student-header {
+  height: 76px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  background: #fff;
+  border-bottom: 1px solid var(--app-border);
+}
+
+.student-header h1 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.student-header span {
+  font-size: 13px;
+  color: var(--app-muted);
 }
 
 .student-user {
@@ -95,20 +147,17 @@ function logout() {
 }
 
 .student-main {
-  max-width: 1180px;
-  margin: 0 auto;
+  padding: 0;
 }
 
-@media (max-width: 800px) {
-  .student-header {
-    grid-template-columns: 1fr auto;
-    height: auto;
-    padding: 12px;
+@media (max-width: 900px) {
+  .student-aside {
+    width: 76px !important;
   }
 
-  .student-menu {
-    grid-column: 1 / -1;
-    order: 3;
+  .student-brand div,
+  .side-menu span {
+    display: none;
   }
 }
 </style>

@@ -5,6 +5,8 @@ CREATE DATABASE IF NOT EXISTS campus_onboarding
 USE campus_onboarding;
 
 SET FOREIGN_KEY_CHECKS = 0;
+DROP TABLE IF EXISTS majors;
+DROP TABLE IF EXISTS colleges;
 DROP TABLE IF EXISTS checkin_records;
 DROP TABLE IF EXISTS announcements;
 DROP TABLE IF EXISTS qualification_modifications;
@@ -24,6 +26,29 @@ CREATE TABLE admins (
   password VARCHAR(100) NOT NULL,
   create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE colleges (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  name VARCHAR(100) NOT NULL UNIQUE,
+  sort_no INT NOT NULL DEFAULT 0,
+  is_enabled TINYINT(1) NOT NULL DEFAULT 1,
+  create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_college_sort (sort_no)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE majors (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  college_id BIGINT NOT NULL,
+  name VARCHAR(100) NOT NULL,
+  sort_no INT NOT NULL DEFAULT 0,
+  is_enabled TINYINT(1) NOT NULL DEFAULT 1,
+  create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_college_major (college_id, name),
+  INDEX idx_major_college_sort (college_id, sort_no),
+  CONSTRAINT fk_major_college FOREIGN KEY (college_id) REFERENCES colleges(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE students (
@@ -157,6 +182,22 @@ SET @pwd = '$2b$12$izEA9IQSVcF3M90z8rPBdue/yK8ka4vCq1QWRStZeqZP2mb2qwYQm';
 
 INSERT INTO admins (id, username, name, password) VALUES
 (1, 'admin', '迎新管理员', @pwd);
+
+INSERT INTO colleges (id, name, sort_no, is_enabled) VALUES
+(1, '计算机学院', 1, 1),
+(2, '经济管理学院', 2, 1),
+(3, '外国语学院', 3, 1);
+
+INSERT INTO majors (id, college_id, name, sort_no, is_enabled) VALUES
+(1, 1, '软件工程', 1, 1),
+(2, 1, '计算机科学与技术', 2, 1),
+(3, 1, '数据科学与大数据技术', 3, 1),
+(4, 2, '会计学', 1, 1),
+(5, 2, '财务管理', 2, 1),
+(6, 2, '工商管理', 3, 1),
+(7, 3, '英语', 1, 1),
+(8, 3, '商务英语', 2, 1),
+(9, 3, '日语', 3, 1);
 
 INSERT INTO dorm_buildings (id, building_no, name, gender, sort_no) VALUES
 (1, 'M1', '男生一号楼', '男', 1),

@@ -31,7 +31,6 @@ onMounted(loadData)
     <div class="page-header">
       <div>
         <h2 class="page-title">个人中心</h2>
-        <p class="page-subtitle">查看录取资料、报到状态和资格修改审核结果</p>
       </div>
     </div>
 

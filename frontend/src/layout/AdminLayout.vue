@@ -41,7 +41,7 @@ function logout() {
       <div class="brand">
         <el-icon><HomeFilled /></el-icon>
         <div>
-          <strong>迎新管理系统</strong>
+          <strong>新生管理系统</strong>
           <span>Admin Console</span>
         </div>
       </div>
@@ -56,7 +56,6 @@ function logout() {
       <el-header class="admin-header">
         <div>
           <h1>{{ pageTitle }}</h1>
-          <span>单级管理员工作台</span>
         </div>
         <div class="header-actions">
           <span>{{ auth.displayName }}</span>

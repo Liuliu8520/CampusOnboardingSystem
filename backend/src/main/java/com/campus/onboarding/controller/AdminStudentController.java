@@ -2,6 +2,7 @@ package com.campus.onboarding.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.campus.onboarding.common.Result;
+import com.campus.onboarding.dto.StudentPaymentStatusRequest;
 import com.campus.onboarding.dto.StudentSaveRequest;
 import com.campus.onboarding.entity.Student;
 import com.campus.onboarding.service.AdminWorkflowService;
@@ -68,6 +69,11 @@ public class AdminStudentController {
     @PutMapping("/{id}/checkin")
     public Result<Student> checkin(@PathVariable Long id) {
         return Result.ok(adminWorkflowService.adminCheckin(id));
+    }
+
+    @PutMapping("/{id}/payments")
+    public Result<Student> updatePayments(@PathVariable Long id, @RequestBody StudentPaymentStatusRequest request) {
+        return Result.ok(adminWorkflowService.updateStudentPayments(id, request));
     }
 
     @DeleteMapping("/{id}")

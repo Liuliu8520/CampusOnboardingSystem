@@ -1,9 +1,11 @@
 import request from './request'
 import type {
   Announcement,
+  College,
   DormBuilding,
   DormRoom,
   FeeItem,
+  Major,
   PageResult,
   QualificationModification,
   Student,
@@ -41,6 +43,8 @@ export const studentApi = {
 
 export const adminApi = {
   dashboard: () => request.get<Record<string, any>, Record<string, any>>('/admin/dashboard/stats'),
+  colleges: () => request.get<College[], College[]>('/admin/academics/colleges'),
+  majors: (params?: Record<string, any>) => request.get<Major[], Major[]>('/admin/academics/majors', { params }),
   students: (params: Record<string, any>) => request.get<PageResult<Student>, PageResult<Student>>('/admin/students', { params }),
   saveStudent: (data: Student) => (data.id
     ? request.put<Student, Student>(`/admin/students/${data.id}`, data)
@@ -48,6 +52,8 @@ export const adminApi = {
   deleteStudent: (id: number) => request.delete(`/admin/students/${id}`),
   resetPassword: (id: number) => request.put(`/admin/students/${id}/reset-password`),
   adminCheckin: (id: number) => request.put(`/admin/students/${id}/checkin`),
+  updateStudentPayments: (id: number, paidFeeItemIds: number[]) =>
+    request.put<Student, Student>(`/admin/students/${id}/payments`, { paidFeeItemIds }),
   buildings: () => request.get<DormBuilding[], DormBuilding[]>('/admin/dorm/buildings'),
   saveBuilding: (data: DormBuilding) => (data.id
     ? request.put<DormBuilding, DormBuilding>(`/admin/dorm/buildings/${data.id}`, data)

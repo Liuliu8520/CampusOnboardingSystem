@@ -3,12 +3,13 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Delete, Edit, Plus, Refresh, Tickets } from '@element-plus/icons-vue'
 import { adminApi } from '@/api/modules'
-import type { DormBuilding, DormRoom } from '@/types'
+import type { DormBuilding, DormRoom, Major } from '@/types'
 
 const loading = ref(false)
 const buildings = ref<DormBuilding[]>([])
 const rooms = ref<DormRoom[]>([])
 const occupancy = ref<any[]>([])
+const majors = ref<Major[]>([])
 const buildingDialog = ref(false)
 const roomDialog = ref(false)
 const selectedBuildingId = ref<number | undefined>()
@@ -30,6 +31,7 @@ const roomForm = reactive({
 })
 
 const selectedBuilding = computed(() => buildings.value.find((item) => item.id === selectedBuildingId.value))
+const roomMajorOptions = computed(() => majors.value)
 
 function resetBuilding() {
   Object.assign(buildingForm, { id: undefined, buildingNo: '', name: '', gender: '男', sortNo: 1 })
@@ -49,12 +51,14 @@ function resetRoom() {
 async function loadData() {
   loading.value = true
   try {
-    const [buildingData, occupancyData] = await Promise.all([
+    const [buildingData, occupancyData, majorData] = await Promise.all([
       adminApi.buildings(),
-      adminApi.occupancy()
+      adminApi.occupancy(),
+      adminApi.majors()
     ])
     buildings.value = buildingData
     occupancy.value = occupancyData
+    majors.value = majorData
     if (!selectedBuildingId.value && buildingData.length) {
       selectedBuildingId.value = buildingData[0].id
     }
@@ -133,7 +137,6 @@ onMounted(loadData)
     <div class="page-header">
       <div>
         <h2 class="page-title">宿舍管理</h2>
-        <p class="page-subtitle">维护楼栋、批量生成房间并查看床位占用</p>
       </div>
       <div class="toolbar-actions">
         <el-button :icon="Refresh" @click="loadData">刷新</el-button>
@@ -196,6 +199,7 @@ onMounted(loadData)
                 <div v-for="bed in room.beds" :key="bed.bed.id" class="bed-cell" :class="{ occupied: bed.bed.occupied }">
                   <span>{{ bed.bed.bedNo }}床</span>
                   <strong>{{ bed.student?.name || '空床' }}</strong>
+                  <small v-if="bed.student">{{ bed.student.studentId }}</small>
                 </div>
               </div>
             </div>
@@ -229,7 +233,11 @@ onMounted(loadData)
             <el-option v-for="item in buildings" :key="item.id" :label="`${item.name}（${item.gender}）`" :value="item.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="专业"><el-input v-model="roomForm.major" /></el-form-item>
+        <el-form-item label="专业">
+          <el-select v-model="roomForm.major" class="wide-input" filterable>
+            <el-option v-for="item in roomMajorOptions" :key="item.id" :label="item.name" :value="item.name" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="性别">
           <el-select v-model="roomForm.gender" class="wide-input">
             <el-option label="男" value="男" />
@@ -331,6 +339,11 @@ onMounted(loadData)
 
 .bed-cell strong {
   font-size: 14px;
+}
+
+.bed-cell small {
+  color: var(--app-muted);
+  font-size: 12px;
 }
 
 .wide-input {

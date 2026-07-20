@@ -95,7 +95,6 @@ onBeforeUnmount(() => {
     <div class="page-header">
       <div>
         <h2 class="page-title">数据看板</h2>
-        <p class="page-subtitle">迎新进度、缴费趋势和学院报到率</p>
       </div>
       <el-button type="primary" @click="loadData">刷新数据</el-button>
     </div>

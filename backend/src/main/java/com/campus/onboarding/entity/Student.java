@@ -4,8 +4,10 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.campus.onboarding.dto.StudentFeeStatus;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @TableName("students")
 public class Student {
@@ -26,6 +28,12 @@ public class Student {
     @TableField("is_checked_in")
     private Boolean checkedIn;
     private Long bedId;
+    @TableField(exist = false)
+    private List<StudentFeeStatus> paymentStatuses;
+    @TableField(exist = false)
+    private Integer requiredFeePaidCount;
+    @TableField(exist = false)
+    private Integer requiredFeeTotal;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
 
@@ -139,6 +147,30 @@ public class Student {
 
     public void setBedId(Long bedId) {
         this.bedId = bedId;
+    }
+
+    public List<StudentFeeStatus> getPaymentStatuses() {
+        return paymentStatuses;
+    }
+
+    public void setPaymentStatuses(List<StudentFeeStatus> paymentStatuses) {
+        this.paymentStatuses = paymentStatuses;
+    }
+
+    public Integer getRequiredFeePaidCount() {
+        return requiredFeePaidCount;
+    }
+
+    public void setRequiredFeePaidCount(Integer requiredFeePaidCount) {
+        this.requiredFeePaidCount = requiredFeePaidCount;
+    }
+
+    public Integer getRequiredFeeTotal() {
+        return requiredFeeTotal;
+    }
+
+    public void setRequiredFeeTotal(Integer requiredFeeTotal) {
+        this.requiredFeeTotal = requiredFeeTotal;
     }
 
     public LocalDateTime getCreateTime() {

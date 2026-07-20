@@ -26,7 +26,36 @@ export interface Student {
   paid?: boolean
   checkedIn?: boolean
   bedId?: number
+  paymentStatuses?: StudentFeeStatus[]
+  requiredFeePaidCount?: number
+  requiredFeeTotal?: number
   createTime?: string
+}
+
+export interface College {
+  id?: number
+  name: string
+  sortNo: number
+  enabled: boolean
+}
+
+export interface Major {
+  id?: number
+  collegeId: number
+  name: string
+  sortNo: number
+  enabled: boolean
+}
+
+export interface StudentFeeStatus {
+  feeItemId: number
+  name: string
+  amount: number
+  required: boolean
+  enabled: boolean
+  paid: boolean
+  status: string
+  payTime?: string
 }
 
 export interface DormBuilding {
