@@ -24,6 +24,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/admin/dorm")
@@ -43,7 +45,20 @@ public class AdminDormController {
     @GetMapping("/buildings")
     public Result<List<DormBuilding>> buildings() {
         AuthContext.requireAdmin();
-        return Result.ok(buildingMapper.selectList(new QueryWrapper<DormBuilding>().orderByAsc("sort_no").orderByAsc("id")));
+        List<DormBuilding> list = buildingMapper.selectList(new QueryWrapper<DormBuilding>().orderByAsc("sort_no").orderByAsc("id"));
+        if (!list.isEmpty()) {
+            Set<Long> ids = list.stream().map(DormBuilding::getId).collect(Collectors.toSet());
+            Map<Long, Long> countMap = roomMapper.selectMaps(new QueryWrapper<DormRoom>()
+                            .in("building_id", ids)
+                            .select("building_id", "COUNT(*) AS cnt")
+                            .groupBy("building_id"))
+                    .stream()
+                    .collect(Collectors.toMap(
+                            m -> ((Number) m.get("building_id")).longValue(),
+                            m -> ((Number) m.get("cnt")).longValue()));
+            list.forEach(b -> b.setRoomCount(countMap.getOrDefault(b.getId(), 0L).intValue()));
+        }
+        return Result.ok(list);
     }
 
     @PostMapping("/buildings")

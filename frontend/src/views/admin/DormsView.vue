@@ -153,10 +153,15 @@ onMounted(loadData)
           <el-table-column prop="name" label="名称" />
           <el-table-column prop="gender" label="性别" width="80" />
           <el-table-column prop="sortNo" label="排序" width="70" />
+          <el-table-column label="房间" width="80">
+            <template #default="{ row }">{{ row.roomCount ?? 0 }}</template>
+          </el-table-column>
           <el-table-column label="操作" width="120">
             <template #default="{ row }">
               <el-button :icon="Edit" circle @click="openBuilding(row)" />
-              <el-button :icon="Delete" circle type="danger" @click="removeBuilding(row)" />
+              <el-tooltip :content="row.roomCount ? `该楼栋有 ${row.roomCount} 个房间，不能删除` : '删除楼栋'">
+                <el-button :icon="Delete" circle type="danger" :disabled="!!row.roomCount" @click="removeBuilding(row)" />
+              </el-tooltip>
             </template>
           </el-table-column>
         </el-table>

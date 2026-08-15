@@ -73,6 +73,7 @@ export interface DormBuilding {
   name: string
   gender: string
   sortNo: number
+  roomCount?: number
 }
 
 export interface DormRoom {
