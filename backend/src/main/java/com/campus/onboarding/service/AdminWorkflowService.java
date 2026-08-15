@@ -366,7 +366,8 @@ public class AdminWorkflowService {
         if (!"PENDING".equals(modification.getStatus())) {
             throw new BizException("该申请已审核");
         }
-        if (Boolean.TRUE.equals(request.approved())) {
+        boolean approved = Boolean.TRUE.equals(request.approved());
+        if (approved) {
             Student student = studentMapper.selectOne(new QueryWrapper<Student>().eq("student_id", modification.getStudentId()));
             if (student == null) {
                 throw new BizException("学生不存在");
@@ -376,20 +377,27 @@ public class AdminWorkflowService {
             modification.setStatus("APPROVED");
         } else {
             modification.setStatus("REJECTED");
+            Student student = studentMapper.selectOne(new QueryWrapper<Student>().eq("student_id", modification.getStudentId()));
+            if (student != null && Boolean.TRUE.equals(student.getVerified())) {
+                student.setVerified(false);
+                studentMapper.updateById(student);
+            }
         }
         modification.setReviewComment(request.comment());
         modification.setReviewer(AuthContext.get().account());
         modification.setReviewTime(LocalDateTime.now());
         modificationMapper.updateById(modification);
 
-        long pendingCount = modificationMapper.selectCount(new QueryWrapper<QualificationModification>()
-                .eq("student_id", modification.getStudentId())
-                .eq("status", "PENDING"));
-        if (pendingCount == 0) {
-            Student s = studentMapper.selectOne(new QueryWrapper<Student>().eq("student_id", modification.getStudentId()));
-            if (s != null && !Boolean.TRUE.equals(s.getVerified())) {
-                s.setVerified(true);
-                studentMapper.updateById(s);
+        if (approved) {
+            long pendingCount = modificationMapper.selectCount(new QueryWrapper<QualificationModification>()
+                    .eq("student_id", modification.getStudentId())
+                    .eq("status", "PENDING"));
+            if (pendingCount == 0) {
+                Student s = studentMapper.selectOne(new QueryWrapper<Student>().eq("student_id", modification.getStudentId()));
+                if (s != null && !Boolean.TRUE.equals(s.getVerified())) {
+                    s.setVerified(true);
+                    studentMapper.updateById(s);
+                }
             }
         }
 
