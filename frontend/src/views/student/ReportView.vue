@@ -56,7 +56,7 @@ onMounted(loadData)
         <el-descriptions-item label="班级">{{ profile?.student.className || '-' }}</el-descriptions-item>
       </el-descriptions>
       <div class="status-row">
-        <el-tag :type="profile?.student.paid ? 'success' : 'warning'">
+        <el-tag :type="profile?.student.paid ? 'success' : 'danger'">
           {{ profile?.student.paid ? '已完成缴费' : '请先完成缴费' }}
         </el-tag>
         <el-tag :type="profile?.student.bedId ? 'success' : 'info'">

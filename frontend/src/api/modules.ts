@@ -8,6 +8,7 @@ import type {
   Major,
   PageResult,
   QualificationModification,
+  SchoolClass,
   Student,
   StudentProfile
 } from '@/types'
@@ -17,6 +18,7 @@ export interface LoginPayload {
   username: string
   password: string
   captcha: string
+  captchaId: string
 }
 
 export interface LoginResult {
@@ -26,8 +28,16 @@ export interface LoginResult {
   displayName: string
 }
 
+export interface CaptchaResult {
+  captchaId: string
+  question: string
+}
+
 export const authApi = {
-  login: (data: LoginPayload) => request.post<LoginResult, LoginResult>('/auth/login', data)
+  login: (data: LoginPayload) => request.post<LoginResult, LoginResult>('/auth/login', data),
+  captcha: () => request.get<CaptchaResult, CaptchaResult>('/auth/captcha'),
+  changePassword: (data: { oldPassword: string; newPassword: string }) =>
+    request.put('/auth/password', data)
 }
 
 export const studentApi = {
@@ -36,22 +46,37 @@ export const studentApi = {
   pay: (feeItemIds: number[]) => request.post('/student/payment', { feeItemIds }),
   applyModification: (data: { fieldName: string; newValue: string; reason: string }) =>
     request.post<QualificationModification, QualificationModification>('/student/qualification/apply', data),
+  confirmQualification: () => request.post<Student, Student>('/student/qualification/confirm'),
   assignDorm: () => request.post('/student/dorm/assign'),
   checkin: () => request.post<StudentProfile, StudentProfile>('/student/checkin'),
-  announcements: () => request.get<Announcement[], Announcement[]>('/student/announcements')
+  announcements: () => request.get<Announcement[], Announcement[]>('/student/announcements'),
+  announcement: (id: number) => request.get<Announcement, Announcement>(`/student/announcements/${id}`)
 }
 
 export const adminApi = {
   dashboard: () => request.get<Record<string, any>, Record<string, any>>('/admin/dashboard/stats'),
-  colleges: () => request.get<College[], College[]>('/admin/academics/colleges'),
+  colleges: (params?: Record<string, any>) => request.get<College[], College[]>('/admin/academics/colleges', { params }),
+  saveCollege: (data: College) => (data.id
+    ? request.put<College, College>(`/admin/academics/colleges/${data.id}`, data)
+    : request.post<College, College>('/admin/academics/colleges', data)),
+  deleteCollege: (id: number) => request.delete(`/admin/academics/colleges/${id}`),
   majors: (params?: Record<string, any>) => request.get<Major[], Major[]>('/admin/academics/majors', { params }),
+  saveMajor: (data: Major) => (data.id
+    ? request.put<Major, Major>(`/admin/academics/majors/${data.id}`, data)
+    : request.post<Major, Major>('/admin/academics/majors', data)),
+  deleteMajor: (id: number) => request.delete(`/admin/academics/majors/${id}`),
+  classes: (params?: Record<string, any>) => request.get<SchoolClass[], SchoolClass[]>('/admin/academics/classes', { params }),
+  saveClass: (data: SchoolClass) => (data.id
+    ? request.put<SchoolClass, SchoolClass>(`/admin/academics/classes/${data.id}`, data)
+    : request.post<SchoolClass, SchoolClass>('/admin/academics/classes', data)),
+  deleteClass: (id: number) => request.delete(`/admin/academics/classes/${id}`),
   students: (params: Record<string, any>) => request.get<PageResult<Student>, PageResult<Student>>('/admin/students', { params }),
   saveStudent: (data: Student) => (data.id
     ? request.put<Student, Student>(`/admin/students/${data.id}`, data)
     : request.post<Student, Student>('/admin/students', data)),
   deleteStudent: (id: number) => request.delete(`/admin/students/${id}`),
   resetPassword: (id: number) => request.put(`/admin/students/${id}/reset-password`),
-  adminCheckin: (id: number) => request.put(`/admin/students/${id}/checkin`),
+  toggleCheckin: (id: number) => request.put(`/admin/students/${id}/checkin`),
   updateStudentPayments: (id: number, paidFeeItemIds: number[]) =>
     request.put<Student, Student>(`/admin/students/${id}/payments`, { paidFeeItemIds }),
   buildings: () => request.get<DormBuilding[], DormBuilding[]>('/admin/dorm/buildings'),

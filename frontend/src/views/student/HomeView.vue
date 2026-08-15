@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { CreditCard, DocumentChecked, LocationFilled } from '@element-plus/icons-vue'
 import { studentApi } from '@/api/modules'
+import { formatDate } from '@/utils/format'
 import type { Announcement, StudentProfile } from '@/types'
 
 const loading = ref(false)
@@ -15,7 +16,7 @@ const quickLinks = [
   { path: '/student/report', label: '报到页', desc: '宿舍分配与现场报到合并处理', icon: LocationFilled }
 ]
 
-const latestAnnouncements = computed(() => announcements.value.slice(0, 3))
+const latestAnnouncements = computed(() => announcements.value.slice(0, 5))
 
 async function loadData() {
   loading.value = true
@@ -42,7 +43,7 @@ onMounted(loadData)
         <p>{{ profile?.student.studentId || '-' }} | {{ profile?.student.major || '-' }} - {{ profile?.student.className || '-' }}</p>
       </div>
       <div class="status-row">
-        <el-tag :type="profile?.student.paid ? 'success' : 'warning'">
+        <el-tag :type="profile?.student.paid ? 'success' : 'danger'">
           {{ profile?.student.paid ? '必缴已完成' : '必缴待完成' }}
         </el-tag>
         <el-tag :type="profile?.student.checkedIn ? 'success' : 'info'">
@@ -69,13 +70,15 @@ onMounted(loadData)
         <RouterLink to="/student/announcements" class="more-link">查看全部</RouterLink>
       </div>
       <div class="notice-list">
-        <article v-for="item in latestAnnouncements" :key="item.id" class="notice-item">
-          <div class="notice-meta">
-            <strong>{{ item.title }}</strong>
-            <time>{{ item.createTime }}</time>
-          </div>
-          <p>{{ item.content }}</p>
-        </article>
+        <RouterLink
+          v-for="item in latestAnnouncements"
+          :key="item.id"
+          :to="`/student/announcements/${item.id}`"
+          class="notice-item"
+        >
+          <strong>{{ item.title }}</strong>
+          <time>{{ formatDate(item.createTime) }}</time>
+        </RouterLink>
         <div v-if="!latestAnnouncements.length" class="empty-hint">暂无通知</div>
       </div>
     </section>
@@ -164,31 +167,33 @@ onMounted(loadData)
 }
 
 .notice-item {
-  border: 1px solid var(--app-border);
-  border-radius: 8px;
-  padding: 14px 16px;
-  background: #fff;
-}
-
-.notice-meta {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   gap: 10px;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  padding: 12px 16px;
+  background: #fff;
+  color: #2c3e50;
+  text-decoration: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-.notice-meta strong {
+.notice-item:hover {
+  border-color: var(--app-primary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.notice-item strong {
   font-size: 15px;
+  font-weight: 600;
 }
 
-.notice-meta time {
+.notice-item time {
   color: var(--app-muted);
   font-size: 12px;
-}
-
-.notice-item p {
-  margin: 10px 0 0;
-  color: #3c4758;
-  line-height: 1.7;
+  white-space: nowrap;
 }
 
 @media (max-width: 900px) {
@@ -196,8 +201,9 @@ onMounted(loadData)
     grid-template-columns: 1fr;
   }
 
-  .notice-meta {
+  .notice-item {
     flex-direction: column;
+    align-items: flex-start;
   }
 }
 </style>

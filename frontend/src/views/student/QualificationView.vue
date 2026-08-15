@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { EditPen } from '@element-plus/icons-vue'
 import { studentApi } from '@/api/modules'
 import type { StudentProfile } from '@/types'
 
 const loading = ref(false)
 const submitLoading = ref(false)
+const confirmLoading = ref(false)
 const profile = ref<StudentProfile>()
 const applyVisible = ref(false)
 const applyForm = reactive({
@@ -28,8 +29,8 @@ const fieldOptions = [
 const qualificationStatus = computed(() => {
   const hasPending = profile.value?.modifications.some((item) => item.status === 'PENDING')
   if (hasPending) return '待审核'
-  if (profile.value?.student.paid) return '资料已核验'
-  return '待完善'
+  if (profile.value?.student.verified) return '资料已核验'
+  return '资料未核验'
 })
 
 async function loadData() {
@@ -59,6 +60,26 @@ async function submitApply() {
   }
 }
 
+async function handleConfirm() {
+  try {
+    await ElMessageBox.confirm('确认以上信息无误？确认后资格状态将变为"资料已核验"。', '请确认', {
+      confirmButtonText: '确认无误',
+      cancelButtonText: '再看看',
+      type: 'warning'
+    })
+  } catch {
+    return
+  }
+  confirmLoading.value = true
+  try {
+    await studentApi.confirmQualification()
+    ElMessage.success('已确认，资料核验通过')
+    await loadData()
+  } finally {
+    confirmLoading.value = false
+  }
+}
+
 function statusText(status: string) {
   return status === 'APPROVED' ? '已通过' : status === 'REJECTED' ? '已驳回' : '待审核'
 }
@@ -67,12 +88,24 @@ function statusType(status: string) {
   return status === 'APPROVED' ? 'success' : status === 'REJECTED' ? 'danger' : 'warning'
 }
 
+function qualificationColor() {
+  if (qualificationStatus.value === '资料已核验') return 'success'
+  if (qualificationStatus.value === '待审核') return 'warning'
+  return 'info'
+}
+
 onMounted(loadData)
 </script>
 
 <template>
   <div class="page" v-loading="loading">
     <div class="page-actions">
+      <el-button
+        type="success"
+        :loading="confirmLoading"
+        :disabled="qualificationStatus !== '资料未核验'"
+        @click="handleConfirm"
+      >确认资料无误</el-button>
       <el-button type="primary" :icon="EditPen" @click="applyVisible = true">发起修改申请</el-button>
     </div>
 
@@ -89,7 +122,7 @@ onMounted(loadData)
         <el-descriptions-item label="身份证号">{{ profile?.student.idCard || '-' }}</el-descriptions-item>
         <el-descriptions-item label="家庭地址" :span="2">{{ profile?.student.address || '-' }}</el-descriptions-item>
         <el-descriptions-item label="资格状态">
-          <el-tag :type="profile?.student.paid ? 'success' : 'warning'">{{ qualificationStatus }}</el-tag>
+          <el-tag :type="qualificationColor()">{{ qualificationStatus }}</el-tag>
         </el-descriptions-item>
         <el-descriptions-item label="宿舍">{{ profile?.dorm?.display || '未分配' }}</el-descriptions-item>
       </el-descriptions>

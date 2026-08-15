@@ -7,19 +7,25 @@ import com.campus.onboarding.dto.PaymentRequest;
 import com.campus.onboarding.dto.StudentProfileResponse;
 import com.campus.onboarding.entity.Announcement;
 import com.campus.onboarding.entity.CheckinRecord;
+import com.campus.onboarding.entity.College;
 import com.campus.onboarding.entity.DormBed;
 import com.campus.onboarding.entity.DormBuilding;
 import com.campus.onboarding.entity.DormRoom;
 import com.campus.onboarding.entity.FeeItem;
+import com.campus.onboarding.entity.Major;
 import com.campus.onboarding.entity.PaymentRecord;
 import com.campus.onboarding.entity.QualificationModification;
+import com.campus.onboarding.entity.SchoolClass;
 import com.campus.onboarding.entity.Student;
 import com.campus.onboarding.mapper.AnnouncementMapper;
 import com.campus.onboarding.mapper.CheckinRecordMapper;
+import com.campus.onboarding.mapper.ClassMapper;
+import com.campus.onboarding.mapper.CollegeMapper;
 import com.campus.onboarding.mapper.DormBedMapper;
 import com.campus.onboarding.mapper.DormBuildingMapper;
 import com.campus.onboarding.mapper.DormRoomMapper;
 import com.campus.onboarding.mapper.FeeItemMapper;
+import com.campus.onboarding.mapper.MajorMapper;
 import com.campus.onboarding.mapper.PaymentRecordMapper;
 import com.campus.onboarding.mapper.QualificationModificationMapper;
 import com.campus.onboarding.mapper.StudentMapper;
@@ -58,6 +64,9 @@ public class StudentWorkflowService {
     private final DormBedMapper bedMapper;
     private final CheckinRecordMapper checkinRecordMapper;
     private final AnnouncementMapper announcementMapper;
+    private final CollegeMapper collegeMapper;
+    private final MajorMapper majorMapper;
+    private final ClassMapper classMapper;
 
     public StudentWorkflowService(StudentMapper studentMapper,
                                   QualificationModificationMapper modificationMapper,
@@ -67,7 +76,10 @@ public class StudentWorkflowService {
                                   DormRoomMapper roomMapper,
                                   DormBedMapper bedMapper,
                                   CheckinRecordMapper checkinRecordMapper,
-                                  AnnouncementMapper announcementMapper) {
+                                  AnnouncementMapper announcementMapper,
+                                  CollegeMapper collegeMapper,
+                                  MajorMapper majorMapper,
+                                  ClassMapper classMapper) {
         this.studentMapper = studentMapper;
         this.modificationMapper = modificationMapper;
         this.feeItemMapper = feeItemMapper;
@@ -77,6 +89,9 @@ public class StudentWorkflowService {
         this.bedMapper = bedMapper;
         this.checkinRecordMapper = checkinRecordMapper;
         this.announcementMapper = announcementMapper;
+        this.collegeMapper = collegeMapper;
+        this.majorMapper = majorMapper;
+        this.classMapper = classMapper;
     }
 
     public StudentProfileResponse profile() {
@@ -96,6 +111,7 @@ public class StudentWorkflowService {
         if (student == null) {
             throw new BizException(401, "学生信息不存在，请重新登录");
         }
+        populateNames(List.of(student));
         return student;
     }
 
@@ -123,6 +139,20 @@ public class StudentWorkflowService {
         modification.setStatus("PENDING");
         modificationMapper.insert(modification);
         return modification;
+    }
+
+    @Transactional
+    public Student confirmQualification() {
+        Student student = currentStudent();
+        long pendingCount = modificationMapper.selectCount(new QueryWrapper<QualificationModification>()
+                .eq("student_id", student.getStudentId())
+                .eq("status", "PENDING"));
+        if (pendingCount > 0) {
+            throw new BizException("还有待审核的修改申请，请先等待审核结果");
+        }
+        student.setVerified(true);
+        studentMapper.updateById(student);
+        return student;
     }
 
     public List<Map<String, Object>> paymentItems() {
@@ -155,6 +185,9 @@ public class StudentWorkflowService {
     @Transactional
     public Map<String, Object> pay(PaymentRequest request) {
         Student student = currentStudent();
+        if (!Boolean.TRUE.equals(student.getVerified())) {
+            throw new BizException("请先完成资料核验再进行缴费");
+        }
         LocalDateTime now = LocalDateTime.now();
         for (Long feeItemId : request.feeItemIds()) {
             FeeItem item = feeItemMapper.selectById(feeItemId);
@@ -250,6 +283,16 @@ public class StudentWorkflowService {
         return announcementMapper.selectList(new QueryWrapper<Announcement>()
                 .eq("is_published", true)
                 .orderByDesc("create_time"));
+    }
+
+    public Announcement publishedAnnouncement(Long id) {
+        Announcement announcement = announcementMapper.selectOne(new QueryWrapper<Announcement>()
+                .eq("id", id)
+                .eq("is_published", true));
+        if (announcement == null) {
+            throw new BizException("通知不存在或未发布");
+        }
+        return announcement;
     }
 
     public Map<String, Object> dormDetail(Student student) {
@@ -367,5 +410,23 @@ public class StudentWorkflowService {
             case "address" -> student.getAddress();
             default -> "";
         };
+    }
+
+    private void populateNames(List<Student> students) {
+        if (students == null || students.isEmpty()) return;
+        Set<Long> collegeIds = students.stream().map(Student::getCollegeId).filter(Objects::nonNull).collect(Collectors.toSet());
+        Set<Long> majorIds = students.stream().map(Student::getMajorId).filter(Objects::nonNull).collect(Collectors.toSet());
+        Set<Long> classIds = students.stream().map(Student::getClassId).filter(Objects::nonNull).collect(Collectors.toSet());
+        Map<Long, String> collegeMap = collegeIds.isEmpty() ? Map.of()
+                : collegeMapper.selectBatchIds(collegeIds).stream().collect(Collectors.toMap(College::getId, College::getName));
+        Map<Long, String> majorMap = majorIds.isEmpty() ? Map.of()
+                : majorMapper.selectBatchIds(majorIds).stream().collect(Collectors.toMap(Major::getId, Major::getName));
+        Map<Long, String> classMap = classIds.isEmpty() ? Map.of()
+                : classMapper.selectBatchIds(classIds).stream().collect(Collectors.toMap(SchoolClass::getId, SchoolClass::getName));
+        for (Student s : students) {
+            s.setCollege(collegeMap.get(s.getCollegeId()));
+            s.setMajor(majorMap.get(s.getMajorId()));
+            s.setClassName(classMap.get(s.getClassId()));
+        }
     }
 }

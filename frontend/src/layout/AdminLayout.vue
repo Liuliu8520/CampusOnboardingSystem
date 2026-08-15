@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import {
@@ -8,10 +8,13 @@ import {
   HomeFilled,
   House,
   Finished,
+  Lock,
   PieChart,
+  School,
   SwitchButton,
   User
 } from '@element-plus/icons-vue'
+import ChangePasswordDialog from '@/components/ChangePasswordDialog.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -19,9 +22,11 @@ const auth = useAuthStore()
 
 const activePath = computed(() => route.path)
 const pageTitle = computed(() => String(route.meta.title || '管理后台'))
+const passwordVisible = ref(false)
 
 const menus = [
   { path: '/admin/dashboard', label: '数据看板', icon: PieChart },
+  { path: '/admin/academics', label: '学院管理', icon: School },
   { path: '/admin/students', label: '学生管理', icon: User },
   { path: '/admin/dorms', label: '宿舍管理', icon: House },
   { path: '/admin/fees', label: '缴费项目', icon: CreditCard },
@@ -59,6 +64,9 @@ function logout() {
         </div>
         <div class="header-actions">
           <span>{{ auth.displayName }}</span>
+          <el-tooltip content="修改密码">
+            <el-button :icon="Lock" circle @click="passwordVisible = true" />
+          </el-tooltip>
           <el-tooltip content="退出登录">
             <el-button :icon="SwitchButton" circle @click="logout" />
           </el-tooltip>
@@ -68,6 +76,7 @@ function logout() {
         <RouterView />
       </el-main>
     </el-container>
+    <ChangePasswordDialog v-model="passwordVisible" />
   </el-container>
 </template>
 

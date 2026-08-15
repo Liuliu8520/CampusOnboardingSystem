@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Check, Delete, Edit, Plus, RefreshLeft, Tickets } from '@element-plus/icons-vue'
+import { Check, Delete, Edit, Plus, RefreshLeft, Tickets, View } from '@element-plus/icons-vue'
 import { adminApi } from '@/api/modules'
 import type { College, Major, Student, StudentFeeStatus } from '@/types'
 
@@ -15,13 +15,18 @@ const list = ref<Student[]>([])
 const colleges = ref<College[]>([])
 const majors = ref<Major[]>([])
 const paymentStudent = ref<Student>()
+const detailStudent = ref<Student>()
+const detailVisible = ref(false)
 const query = reactive({
   page: 1,
   size: 10,
   keyword: '',
   college: '',
   major: '',
-  checkedIn: undefined as boolean | undefined
+  checkedIn: undefined as boolean | undefined,
+  paid: undefined as boolean | undefined,
+  verified: undefined as boolean | undefined,
+  bedAssigned: undefined as boolean | undefined
 })
 
 const form = reactive<Student>({
@@ -72,8 +77,8 @@ function majorsByCollege(collegeName: string) {
 
 async function loadAcademics() {
   const [collegeData, majorData] = await Promise.all([
-    adminApi.colleges(),
-    adminApi.majors()
+    adminApi.colleges({ enabled: true }),
+    adminApi.majors({ enabled: true })
   ])
   colleges.value = collegeData
   majors.value = majorData
@@ -105,6 +110,11 @@ function openPayments(row: Student) {
   paymentStudent.value = row
   paymentForm.paidFeeItemIds = row.paymentStatuses?.filter((item) => item.paid).map((item) => item.feeItemId) || []
   paymentDialogVisible.value = true
+}
+
+function openDetail(row: Student) {
+  detailStudent.value = row
+  detailVisible.value = true
 }
 
 async function save() {
@@ -151,13 +161,29 @@ async function resetPassword(row: Student) {
   ElMessage.success('密码已重置为 123456')
 }
 
-async function adminCheckin(row: Student) {
-  await adminApi.adminCheckin(row.id!)
-  ElMessage.success('已确认报到')
+async function toggleCheckin(row: Student) {
+  const turningOff = row.checkedIn
+  if (turningOff) {
+    await ElMessageBox.confirm(`确认将 ${row.name} 的报到状态改为「未报到」？`, '取消报到', { type: 'warning' })
+  }
+  await adminApi.toggleCheckin(row.id!)
+  ElMessage.success(turningOff ? '已改为未报到' : '已确认报到')
   await loadData()
 }
 
 function search() {
+  query.page = 1
+  loadData()
+}
+
+function resetQuery() {
+  query.keyword = ''
+  query.college = ''
+  query.major = ''
+  query.checkedIn = undefined
+  query.paid = undefined
+  query.verified = undefined
+  query.bedAssigned = undefined
   query.page = 1
   loadData()
 }
@@ -206,18 +232,31 @@ onMounted(async () => {
 
     <section class="panel">
       <div class="toolbar">
-        <el-input v-model="query.keyword" placeholder="学号/姓名/手机号" clearable style="width: 220px" @keyup.enter="search" />
-        <el-select v-model="query.college" placeholder="学院" clearable filterable style="width: 180px" @change="onQueryCollegeChange">
+        <el-input v-model="query.keyword" placeholder="学号/姓名/手机号" clearable style="width: 200px" @keyup.enter="search" />
+        <el-select v-model="query.college" placeholder="学院" clearable filterable style="width: 150px" @change="onQueryCollegeChange">
           <el-option v-for="item in colleges" :key="item.id" :label="item.name" :value="item.name" />
         </el-select>
-        <el-select v-model="query.major" placeholder="专业" clearable filterable style="width: 190px">
+        <el-select v-model="query.major" placeholder="专业" clearable filterable style="width: 160px">
           <el-option v-for="item in queryMajorOptions" :key="item.id" :label="item.name" :value="item.name" />
         </el-select>
-        <el-select v-model="query.checkedIn" placeholder="报到状态" clearable style="width: 150px">
+        <el-select v-model="query.paid" placeholder="缴费" clearable style="width: 110px">
+          <el-option label="已缴费" :value="true" />
+          <el-option label="未缴费" :value="false" />
+        </el-select>
+        <el-select v-model="query.verified" placeholder="核验" clearable style="width: 110px">
+          <el-option label="已核验" :value="true" />
+          <el-option label="未核验" :value="false" />
+        </el-select>
+        <el-select v-model="query.bedAssigned" placeholder="宿舍" clearable style="width: 110px">
+          <el-option label="已分配" :value="true" />
+          <el-option label="未分配" :value="false" />
+        </el-select>
+        <el-select v-model="query.checkedIn" placeholder="报到" clearable style="width: 110px">
           <el-option label="已报到" :value="true" />
           <el-option label="未报到" :value="false" />
         </el-select>
         <el-button type="primary" @click="search">查询</el-button>
+        <el-button @click="resetQuery">重置</el-button>
       </div>
 
       <el-table :data="list" border v-loading="loading">
@@ -251,8 +290,11 @@ onMounted(async () => {
             <el-tag :type="row.checkedIn ? 'success' : 'info'">{{ row.checkedIn ? '已报到' : '未报到' }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="318" fixed="right">
+        <el-table-column label="操作" width="340">
           <template #default="{ row }">
+            <el-tooltip content="学生清单">
+              <el-button :icon="View" circle @click="openDetail(row)" />
+            </el-tooltip>
             <el-tooltip content="编辑">
               <el-button :icon="Edit" circle @click="openEdit(row)" />
             </el-tooltip>
@@ -262,8 +304,13 @@ onMounted(async () => {
             <el-tooltip content="重置密码">
               <el-button :icon="RefreshLeft" circle @click="resetPassword(row)" />
             </el-tooltip>
-            <el-tooltip content="确认报到">
-              <el-button :icon="Check" circle type="success" :disabled="row.checkedIn" @click="adminCheckin(row)" />
+            <el-tooltip :content="row.checkedIn ? '取消报到' : '确认报到'">
+              <el-button
+                :icon="Check"
+                circle
+                :type="row.checkedIn ? 'warning' : 'success'"
+                @click="toggleCheckin(row)"
+              />
             </el-tooltip>
             <el-tooltip content="删除">
               <el-button :icon="Delete" circle type="danger" @click="remove(row)" />
@@ -306,9 +353,6 @@ onMounted(async () => {
         <el-form-item label="手机号"><el-input v-model="form.phone" /></el-form-item>
         <el-form-item label="身份证号"><el-input v-model="form.idCard" /></el-form-item>
         <el-form-item label="家庭地址" class="wide"><el-input v-model="form.address" /></el-form-item>
-        <el-form-item label="流程状态">
-          <el-checkbox v-model="form.checkedIn">已现场报到</el-checkbox>
-        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
@@ -335,6 +379,45 @@ onMounted(async () => {
         <el-button type="primary" :loading="paymentSaving" @click="savePayments">保存</el-button>
       </template>
     </el-dialog>
+
+    <el-dialog v-model="detailVisible" :title="`${detailStudent?.name || ''} 学生清单`" width="680px">
+      <el-descriptions v-if="detailStudent" :column="2" border>
+        <el-descriptions-item label="学号">{{ detailStudent.studentId }}</el-descriptions-item>
+        <el-descriptions-item label="姓名">{{ detailStudent.name }}</el-descriptions-item>
+        <el-descriptions-item label="性别">{{ detailStudent.gender }}</el-descriptions-item>
+        <el-descriptions-item label="学院">{{ detailStudent.college }}</el-descriptions-item>
+        <el-descriptions-item label="专业">{{ detailStudent.major }}</el-descriptions-item>
+        <el-descriptions-item label="班级">{{ detailStudent.className }}</el-descriptions-item>
+        <el-descriptions-item label="手机号">{{ detailStudent.phone || '—' }}</el-descriptions-item>
+        <el-descriptions-item label="身份证号">{{ detailStudent.idCard || '—' }}</el-descriptions-item>
+        <el-descriptions-item label="家庭地址" :span="2">{{ detailStudent.address || '—' }}</el-descriptions-item>
+        <el-descriptions-item label="必缴汇总">{{ requiredSummary(detailStudent) }}</el-descriptions-item>
+        <el-descriptions-item label="宿舍">
+          <el-tag :type="detailStudent.bedId ? 'success' : 'info'" size="small">{{ detailStudent.bedId ? '已分配' : '未分配' }}</el-tag>
+        </el-descriptions-item>
+        <el-descriptions-item label="报到状态" :span="2">
+          <el-tag :type="detailStudent.checkedIn ? 'success' : 'info'">{{ detailStudent.checkedIn ? '已报到' : '未报到' }}</el-tag>
+        </el-descriptions-item>
+      </el-descriptions>
+      <div class="detail-section-title">缴费明细</div>
+      <el-table :data="detailStudent?.paymentStatuses || []" border size="small">
+        <el-table-column prop="name" label="项目" min-width="140" />
+        <el-table-column label="金额" width="100">
+          <template #default="{ row }">￥{{ formatAmount(row.amount) }}</template>
+        </el-table-column>
+        <el-table-column label="类型" width="80">
+          <template #default="{ row }">{{ row.required ? '必缴' : '选缴' }}</template>
+        </el-table-column>
+        <el-table-column label="状态" width="100">
+          <template #default="{ row }">
+            <el-tag :type="row.paid ? 'success' : (row.required ? 'danger' : 'info')" size="small">{{ row.paid ? '已缴' : '未缴' }}</el-tag>
+          </template>
+        </el-table-column>
+      </el-table>
+      <template #footer>
+        <el-button type="primary" @click="detailVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -352,6 +435,12 @@ onMounted(async () => {
   margin-top: 4px;
   color: var(--app-muted);
   font-size: 12px;
+}
+
+.detail-section-title {
+  margin: 16px 0 10px;
+  font-size: 14px;
+  font-weight: 800;
 }
 
 .payment-status-list {

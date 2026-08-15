@@ -3,6 +3,7 @@ import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Delete, Edit, Plus } from '@element-plus/icons-vue'
 import { adminApi } from '@/api/modules'
+import { formatDate } from '@/utils/format'
 import type { Announcement } from '@/types'
 
 const loading = ref(false)
@@ -81,7 +82,9 @@ onMounted(loadData)
             <el-tag :type="row.published ? 'success' : 'info'">{{ row.published ? '已发布' : '草稿' }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="createTime" label="发布时间" width="180" />
+        <el-table-column label="发布时间" width="180">
+          <template #default="{ row }">{{ formatDate(row.createTime) }}</template>
+        </el-table-column>
         <el-table-column label="操作" width="120">
           <template #default="{ row }">
             <el-button :icon="Edit" circle @click="openEdit(row)" />
@@ -99,10 +102,10 @@ onMounted(loadData)
       />
     </section>
 
-    <el-dialog v-model="dialogVisible" :title="form.id ? '编辑公告' : '发布公告'" width="640px">
+    <el-dialog v-model="dialogVisible" :title="form.id ? '编辑公告' : '发布公告'" width="860px" top="6vh">
       <el-form :model="form" label-position="top">
         <el-form-item label="标题"><el-input v-model="form.title" /></el-form-item>
-        <el-form-item label="内容"><el-input v-model="form.content" type="textarea" :rows="8" /></el-form-item>
+        <el-form-item label="内容"><el-input v-model="form.content" type="textarea" :rows="16" /></el-form-item>
         <el-form-item label="状态">
           <el-switch v-model="form.published" active-text="发布" inactive-text="草稿" />
         </el-form-item>

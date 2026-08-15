@@ -1,14 +1,16 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { Bell, CreditCard, HomeFilled, LocationFilled, SwitchButton, User } from '@element-plus/icons-vue'
+import { Bell, CreditCard, HomeFilled, LocationFilled, Lock, SwitchButton, User } from '@element-plus/icons-vue'
+import ChangePasswordDialog from '@/components/ChangePasswordDialog.vue'
 
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 const activePath = computed(() => route.path)
 const pageTitle = computed(() => String(route.meta.title || '学生端'))
+const passwordVisible = ref(false)
 
 const menus = [
   { path: '/student/home', label: '首页', icon: HomeFilled },
@@ -51,6 +53,9 @@ function logout() {
         </div>
         <div class="student-user">
           <span>{{ auth.displayName }}</span>
+          <el-tooltip content="修改密码">
+            <el-button :icon="Lock" circle @click="passwordVisible = true" />
+          </el-tooltip>
           <el-tooltip content="退出登录">
             <el-button :icon="SwitchButton" circle @click="logout" />
           </el-tooltip>
@@ -60,6 +65,7 @@ function logout() {
         <RouterView />
       </el-main>
     </el-container>
+    <ChangePasswordDialog v-model="passwordVisible" />
   </el-container>
 </template>
 

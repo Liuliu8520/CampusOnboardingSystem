@@ -17,8 +17,10 @@ import com.campus.onboarding.entity.FeeItem;
 import com.campus.onboarding.entity.Major;
 import com.campus.onboarding.entity.PaymentRecord;
 import com.campus.onboarding.entity.QualificationModification;
+import com.campus.onboarding.entity.SchoolClass;
 import com.campus.onboarding.entity.Student;
 import com.campus.onboarding.mapper.CheckinRecordMapper;
+import com.campus.onboarding.mapper.ClassMapper;
 import com.campus.onboarding.mapper.CollegeMapper;
 import com.campus.onboarding.mapper.DormBedMapper;
 import com.campus.onboarding.mapper.DormBuildingMapper;
@@ -37,10 +39,12 @@ import org.springframework.util.StringUtils;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -57,6 +61,7 @@ public class AdminWorkflowService {
     private final CheckinRecordMapper checkinRecordMapper;
     private final CollegeMapper collegeMapper;
     private final MajorMapper majorMapper;
+    private final ClassMapper classMapper;
     private final BCryptPasswordEncoder passwordEncoder;
 
     public AdminWorkflowService(StudentMapper studentMapper,
@@ -69,6 +74,7 @@ public class AdminWorkflowService {
                                 CheckinRecordMapper checkinRecordMapper,
                                 CollegeMapper collegeMapper,
                                 MajorMapper majorMapper,
+                                ClassMapper classMapper,
                                 BCryptPasswordEncoder passwordEncoder) {
         this.studentMapper = studentMapper;
         this.modificationMapper = modificationMapper;
@@ -80,25 +86,50 @@ public class AdminWorkflowService {
         this.checkinRecordMapper = checkinRecordMapper;
         this.collegeMapper = collegeMapper;
         this.majorMapper = majorMapper;
+        this.classMapper = classMapper;
         this.passwordEncoder = passwordEncoder;
     }
 
-    public Page<Student> studentPage(long page, long size, String keyword, String college, String major, Boolean checkedIn) {
+    public Page<Student> studentPage(long page, long size, String keyword, String college, String major, Boolean checkedIn, Boolean paid, Boolean verified, Boolean bedAssigned) {
         AuthContext.requireAdmin();
         QueryWrapper<Student> wrapper = new QueryWrapper<Student>().orderByDesc("create_time").orderByAsc("student_id");
         if (StringUtils.hasText(keyword)) {
             wrapper.and(w -> w.like("student_id", keyword).or().like("name", keyword).or().like("phone", keyword));
         }
         if (StringUtils.hasText(college)) {
-            wrapper.eq("college", college);
+            College c = selectEnabledCollege(college);
+            if (c != null) {
+                wrapper.eq("college_id", c.getId());
+            } else {
+                wrapper.eq("college_id", -1L);
+            }
         }
         if (StringUtils.hasText(major)) {
-            wrapper.eq("major", major);
+            Major m = majorMapper.selectOne(new QueryWrapper<Major>().eq("name", major).last("LIMIT 1"));
+            if (m != null) {
+                wrapper.eq("major_id", m.getId());
+            } else {
+                wrapper.eq("major_id", -1L);
+            }
         }
         if (checkedIn != null) {
             wrapper.eq("is_checked_in", checkedIn);
         }
+        if (paid != null) {
+            wrapper.eq("is_paid", paid);
+        }
+        if (verified != null) {
+            wrapper.eq("is_verified", verified);
+        }
+        if (bedAssigned != null) {
+            if (bedAssigned) {
+                wrapper.isNotNull("bed_id");
+            } else {
+                wrapper.isNull("bed_id");
+            }
+        }
         Page<Student> result = studentMapper.selectPage(Page.of(page, size), wrapper);
+        populateNames(result.getRecords());
         attachPaymentStatuses(result.getRecords());
         return result;
     }
@@ -111,12 +142,18 @@ public class AdminWorkflowService {
             throw new BizException("学生不存在");
         }
         validateAcademicSelection(request.college(), request.major());
+        College college = selectEnabledCollege(request.college());
+        Major major = majorMapper.selectOne(new QueryWrapper<Major>().eq("name", request.major()).last("LIMIT 1"));
+        SchoolClass klass = classMapper.selectOne(new QueryWrapper<SchoolClass>()
+                .eq("name", request.className())
+                .eq("major_id", major.getId())
+                .last("LIMIT 1"));
         student.setStudentId(request.studentId());
         student.setName(request.name());
         student.setGender(request.gender());
-        student.setCollege(request.college());
-        student.setMajor(request.major());
-        student.setClassName(request.className());
+        student.setCollegeId(college.getId());
+        student.setMajorId(major.getId());
+        student.setClassId(klass == null ? findAnyClassFor(major.getId()) : klass.getId());
         student.setPhone(request.phone());
         student.setIdCard(request.idCard());
         student.setAddress(request.address());
@@ -128,7 +165,13 @@ public class AdminWorkflowService {
         } else {
             studentMapper.updateById(student);
         }
+        populateNames(List.of(student));
         return student;
+    }
+
+    private Long findAnyClassFor(Long majorId) {
+        SchoolClass c = classMapper.selectOne(new QueryWrapper<SchoolClass>().eq("major_id", majorId).last("LIMIT 1"));
+        return c == null ? 1L : c.getId();
     }
 
     @Transactional
@@ -260,8 +303,13 @@ public class AdminWorkflowService {
         List<DormBed> beds = bedMapper.selectList(new QueryWrapper<DormBed>().orderByAsc("room_id").orderByAsc("bed_no"));
         Map<String, Student> students = studentMapper.selectList(new QueryWrapper<Student>()).stream()
                 .collect(Collectors.toMap(Student::getStudentId, Function.identity(), (left, right) -> left));
+        populateNames(new ArrayList<>(students.values()));
         Map<Long, List<DormBed>> bedsByRoom = beds.stream().collect(Collectors.groupingBy(DormBed::getRoomId));
         Map<Long, List<DormRoom>> roomsByBuilding = rooms.stream().collect(Collectors.groupingBy(DormRoom::getBuildingId));
+
+        Map<Long, Long> occupiedByRoom = beds.stream()
+                .filter(b -> Boolean.TRUE.equals(b.getOccupied()))
+                .collect(Collectors.groupingBy(DormBed::getRoomId, Collectors.counting()));
 
         List<Map<String, Object>> result = new ArrayList<>();
         for (DormBuilding building : buildings) {
@@ -269,8 +317,20 @@ public class AdminWorkflowService {
             buildingNode.put("building", building);
             List<Map<String, Object>> roomNodes = new ArrayList<>();
             for (DormRoom room : roomsByBuilding.getOrDefault(building.getId(), List.of())) {
+                DormRoom copy = room;
+                Long actual = occupiedByRoom.getOrDefault(room.getId(), 0L);
+                if (!actual.equals(room.getOccupiedCount())) {
+                    copy = new DormRoom();
+                    copy.setId(room.getId());
+                    copy.setBuildingId(room.getBuildingId());
+                    copy.setRoomNo(room.getRoomNo());
+                    copy.setCapacity(room.getCapacity());
+                    copy.setOccupiedCount(actual.intValue());
+                    copy.setMajor(room.getMajor());
+                    copy.setGender(room.getGender());
+                }
                 Map<String, Object> roomNode = new LinkedHashMap<>();
-                roomNode.put("room", room);
+                roomNode.put("room", copy);
                 List<Map<String, Object>> bedNodes = new ArrayList<>();
                 for (DormBed bed : bedsByRoom.getOrDefault(room.getId(), List.of())) {
                     Map<String, Object> bedNode = new LinkedHashMap<>();
@@ -321,7 +381,33 @@ public class AdminWorkflowService {
         modification.setReviewer(AuthContext.get().account());
         modification.setReviewTime(LocalDateTime.now());
         modificationMapper.updateById(modification);
+
+        long pendingCount = modificationMapper.selectCount(new QueryWrapper<QualificationModification>()
+                .eq("student_id", modification.getStudentId())
+                .eq("status", "PENDING"));
+        if (pendingCount == 0) {
+            Student s = studentMapper.selectOne(new QueryWrapper<Student>().eq("student_id", modification.getStudentId()));
+            if (s != null && !Boolean.TRUE.equals(s.getVerified())) {
+                s.setVerified(true);
+                studentMapper.updateById(s);
+            }
+        }
+
         return modification;
+    }
+
+    @Transactional
+    public Student verifyStudent(Long studentId) {
+        AuthContext.requireAdmin();
+        Student student = studentMapper.selectById(studentId);
+        if (student == null) {
+            throw new BizException("学生不存在");
+        }
+        student.setVerified(true);
+        studentMapper.updateById(student);
+        populateNames(List.of(student));
+        attachPaymentStatuses(List.of(student));
+        return student;
     }
 
     public Map<String, Object> dashboard() {
@@ -331,18 +417,12 @@ public class AdminWorkflowService {
         long checkedInStudents = studentMapper.selectCount(new QueryWrapper<Student>().eq("is_checked_in", true));
         long assignedStudents = studentMapper.selectCount(new QueryWrapper<Student>().isNotNull("bed_id"));
 
-        List<Map<String, Object>> collegeRows = studentMapper.selectMaps(new QueryWrapper<Student>()
-                .select("college", "COUNT(*) AS total", "SUM(CASE WHEN is_checked_in = 1 THEN 1 ELSE 0 END) AS checked_in")
-                .groupBy("college")
-                .orderByAsc("college"));
+        List<Map<String, Object>> collegeRows = computeCollegeCheckin();
 
-        LocalDate start = LocalDate.now().minusDays(6);
-        List<Map<String, Object>> paymentRows = paymentRecordMapper.selectMaps(new QueryWrapper<PaymentRecord>()
-                .select("DATE(pay_time) AS day", "COUNT(*) AS count")
-                .eq("status", "PAID")
-                .ge("pay_time", start.atStartOfDay())
-                .groupBy("DATE(pay_time)")
-                .orderByAsc("day"));
+        List<Map<String, Object>> genderRows = studentMapper.selectMaps(new QueryWrapper<Student>()
+                .select("gender", "COUNT(*) AS count")
+                .groupBy("gender")
+                .orderByAsc("gender"));
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("totalStudents", totalStudents);
@@ -352,29 +432,37 @@ public class AdminWorkflowService {
         result.put("paidRate", rate(paidStudents, totalStudents));
         result.put("checkinRate", rate(checkedInStudents, totalStudents));
         result.put("collegeCheckin", collegeRows);
-        result.put("paymentTrend", paymentRows);
+        result.put("genderDistribution", genderRows);
         return result;
     }
 
     @Transactional
-    public Student adminCheckin(Long studentId) {
+    public Student toggleCheckin(Long studentId) {
         AuthContext.requireAdmin();
         Student student = studentMapper.selectById(studentId);
         if (student == null) {
             throw new BizException("学生不存在");
         }
-        if (student.getBedId() == null) {
-            throw new BizException("学生尚未分配宿舍");
+        // 切换报到状态：未报到 -> 已报到，已报到 -> 未报到
+        boolean targetCheckedIn = !Boolean.TRUE.equals(student.getCheckedIn());
+        if (targetCheckedIn && student.getBedId() == null) {
+            throw new BizException("学生尚未分配宿舍，无法确认报到");
         }
-        student.setCheckedIn(true);
+        student.setCheckedIn(targetCheckedIn);
         studentMapper.updateById(student);
-
-        CheckinRecord record = new CheckinRecord();
-        record.setStudentId(student.getStudentId());
-        record.setOperator(AuthContext.get().account());
-        record.setRemark("管理员确认报到");
-        record.setCheckinTime(LocalDateTime.now());
-        checkinRecordMapper.insert(record);
+        if (targetCheckedIn) {
+            CheckinRecord record = new CheckinRecord();
+            record.setStudentId(student.getStudentId());
+            record.setOperator(AuthContext.get().account());
+            record.setRemark("管理员确认报到");
+            record.setCheckinTime(LocalDateTime.now());
+            checkinRecordMapper.insert(record);
+        } else {
+            // 取消报到：删除该学生的报到记录，保持状态与记录一致
+            checkinRecordMapper.delete(new QueryWrapper<CheckinRecord>()
+                    .eq("student_id", student.getStudentId()));
+        }
+        populateNames(List.of(student));
         return student;
     }
 
@@ -505,17 +593,73 @@ public class AdminWorkflowService {
             case "name" -> student.setName(value);
             case "college" -> {
                 validateCollege(value);
-                student.setCollege(value);
+                College c = selectEnabledCollege(value);
+                student.setCollegeId(c.getId());
             }
             case "major" -> {
-                validateAcademicSelection(student.getCollege(), value);
-                student.setMajor(value);
+                validateAcademicSelectionById(student.getCollegeId(), value);
+                Major m = majorMapper.selectOne(new QueryWrapper<Major>().eq("name", value).last("LIMIT 1"));
+                student.setMajorId(m.getId());
             }
-            case "className" -> student.setClassName(value);
+            case "className" -> {
+                SchoolClass klass = classMapper.selectOne(new QueryWrapper<SchoolClass>()
+                        .eq("name", value)
+                        .eq("major_id", student.getMajorId())
+                        .last("LIMIT 1"));
+                if (klass == null) {
+                    throw new BizException("未找到匹配的班级");
+                }
+                student.setClassId(klass.getId());
+            }
             case "phone" -> student.setPhone(value);
             case "idCard" -> student.setIdCard(value);
             case "address" -> student.setAddress(value);
             default -> throw new BizException("该字段不允许修改");
         }
+    }
+
+    private void validateAcademicSelectionById(Long collegeId, String majorName) {
+        long count = majorMapper.selectCount(new QueryWrapper<Major>()
+                .eq("college_id", collegeId)
+                .eq("name", majorName)
+                .eq("is_enabled", true));
+        if (count == 0) {
+            throw new BizException("请选择该学院下的有效专业");
+        }
+    }
+
+    private void populateNames(List<Student> students) {
+        if (students == null || students.isEmpty()) return;
+        Set<Long> collegeIds = students.stream().map(Student::getCollegeId).filter(Objects::nonNull).collect(Collectors.toSet());
+        Set<Long> majorIds = students.stream().map(Student::getMajorId).filter(Objects::nonNull).collect(Collectors.toSet());
+        Set<Long> classIds = students.stream().map(Student::getClassId).filter(Objects::nonNull).collect(Collectors.toSet());
+        Map<Long, String> collegeMap = collegeIds.isEmpty() ? Map.of()
+                : collegeMapper.selectBatchIds(collegeIds).stream().collect(Collectors.toMap(College::getId, College::getName));
+        Map<Long, String> majorMap = majorIds.isEmpty() ? Map.of()
+                : majorMapper.selectBatchIds(majorIds).stream().collect(Collectors.toMap(Major::getId, Major::getName));
+        Map<Long, String> classMap = classIds.isEmpty() ? Map.of()
+                : classMapper.selectBatchIds(classIds).stream().collect(Collectors.toMap(SchoolClass::getId, SchoolClass::getName));
+        for (Student s : students) {
+            s.setCollege(collegeMap.get(s.getCollegeId()));
+            s.setMajor(majorMap.get(s.getMajorId()));
+            s.setClassName(classMap.get(s.getClassId()));
+        }
+    }
+
+    private List<Map<String, Object>> computeCollegeCheckin() {
+        List<Student> all = studentMapper.selectList(new QueryWrapper<Student>());
+        populateNames(all);
+        Map<String, List<Student>> grouped = all.stream().collect(Collectors.groupingBy(s -> s.getCollege() == null ? "-" : s.getCollege()));
+        List<Map<String, Object>> rows = new ArrayList<>();
+        for (Map.Entry<String, List<Student>> e : grouped.entrySet()) {
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("college", e.getKey());
+            row.put("total", e.getValue().size());
+            long checked = e.getValue().stream().filter(s -> Boolean.TRUE.equals(s.getCheckedIn())).count();
+            row.put("checked_in", checked);
+            rows.add(row);
+        }
+        rows.sort(Comparator.comparing(m -> (String) m.get("college")));
+        return rows;
     }
 }

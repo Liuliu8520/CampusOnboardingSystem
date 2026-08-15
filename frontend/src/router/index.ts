@@ -20,6 +20,7 @@ const router = createRouter({
         { path: 'payment', component: () => import('@/views/student/PaymentView.vue'), meta: { title: '缴费' } },
         { path: 'report', component: () => import('@/views/student/ReportView.vue'), meta: { title: '报到' } },
         { path: 'announcements', component: () => import('@/views/student/AnnouncementView.vue'), meta: { title: '通知' } },
+        { path: 'announcements/:id', component: () => import('@/views/student/AnnouncementDetailView.vue'), meta: { title: '通知详情' } },
         { path: 'onboarding', redirect: '/student/report' },
         { path: 'profile', redirect: '/student/qualification' }
       ]
@@ -31,6 +32,7 @@ const router = createRouter({
       redirect: '/admin/dashboard',
       children: [
         { path: 'dashboard', component: () => import('@/views/admin/DashboardView.vue'), meta: { title: '数据看板' } },
+        { path: 'academics', component: () => import('@/views/admin/AcademicsView.vue'), meta: { title: '学院管理' } },
         { path: 'students', component: () => import('@/views/admin/StudentsView.vue'), meta: { title: '学生管理' } },
         { path: 'dorms', component: () => import('@/views/admin/DormsView.vue'), meta: { title: '宿舍管理' } },
         { path: 'fees', component: () => import('@/views/admin/FeesView.vue'), meta: { title: '缴费项目' } },

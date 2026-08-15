@@ -32,8 +32,11 @@ public class AdminStudentController {
                                       @RequestParam(required = false) String keyword,
                                       @RequestParam(required = false) String college,
                                       @RequestParam(required = false) String major,
-                                      @RequestParam(required = false) Boolean checkedIn) {
-        return Result.ok(adminWorkflowService.studentPage(page, size, keyword, college, major, checkedIn));
+                                      @RequestParam(required = false) Boolean checkedIn,
+                                      @RequestParam(required = false) Boolean paid,
+                                      @RequestParam(required = false) Boolean verified,
+                                      @RequestParam(required = false) Boolean bedAssigned) {
+        return Result.ok(adminWorkflowService.studentPage(page, size, keyword, college, major, checkedIn, paid, verified, bedAssigned));
     }
 
     @PostMapping
@@ -68,7 +71,12 @@ public class AdminStudentController {
 
     @PutMapping("/{id}/checkin")
     public Result<Student> checkin(@PathVariable Long id) {
-        return Result.ok(adminWorkflowService.adminCheckin(id));
+        return Result.ok(adminWorkflowService.toggleCheckin(id));
+    }
+
+    @PutMapping("/{id}/verify")
+    public Result<Student> verify(@PathVariable Long id) {
+        return Result.ok(adminWorkflowService.verifyStudent(id));
     }
 
     @PutMapping("/{id}/payments")

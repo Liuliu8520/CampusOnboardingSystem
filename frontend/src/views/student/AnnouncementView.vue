@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
+import { RouterLink } from 'vue-router'
 import { studentApi } from '@/api/modules'
+import { formatDate } from '@/utils/format'
 import type { Announcement } from '@/types'
 
 const loading = ref(false)
@@ -21,13 +23,15 @@ onMounted(loadData)
 <template>
   <div class="page" v-loading="loading">
     <section class="notice-list">
-      <article v-for="item in list" :key="item.id" class="notice-item">
-        <div>
-          <h3>{{ item.title }}</h3>
-          <time>{{ item.createTime }}</time>
-        </div>
-        <p>{{ item.content }}</p>
-      </article>
+      <RouterLink
+        v-for="item in list"
+        :key="item.id"
+        :to="`/student/announcements/${item.id}`"
+        class="notice-item"
+      >
+        <strong>{{ item.title }}</strong>
+        <time>{{ formatDate(item.createTime) }}</time>
+      </RouterLink>
       <div v-if="!list.length" class="panel empty-hint">暂无公告</div>
     </section>
   </div>
@@ -40,27 +44,39 @@ onMounted(loadData)
 }
 
 .notice-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
   background: #fff;
   border: 1px solid var(--app-border);
   border-radius: 8px;
-  padding: 18px;
+  padding: 16px 18px;
+  color: #2c3e50;
+  text-decoration: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-.notice-item h3 {
-  margin: 0;
-  font-size: 18px;
+.notice-item:hover {
+  border-color: var(--app-primary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.notice-item strong {
+  font-size: 16px;
+  font-weight: 600;
 }
 
 .notice-item time {
-  display: inline-block;
-  margin-top: 6px;
   color: var(--app-muted);
   font-size: 13px;
+  white-space: nowrap;
 }
 
-.notice-item p {
-  margin: 14px 0 0;
-  color: #3b4658;
-  line-height: 1.8;
+@media (max-width: 900px) {
+  .notice-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }
 </style>

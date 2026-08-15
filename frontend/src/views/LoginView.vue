@@ -1,19 +1,35 @@
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Lock, UserFilled } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
+import { authApi } from '@/api/modules'
 
 const router = useRouter()
 const auth = useAuthStore()
 const loading = ref(false)
+const captchaLoading = ref(false)
+const captchaId = ref('')
+const captchaQuestion = ref('')
 const form = reactive({
   role: 'STUDENT' as 'STUDENT' | 'ADMIN',
   username: '20260001',
   password: '123456',
-  captcha: '6666'
+  captcha: ''
 })
+
+async function loadCaptcha() {
+  captchaLoading.value = true
+  try {
+    const data = await authApi.captcha()
+    captchaId.value = data.captchaId
+    captchaQuestion.value = data.question
+    form.captcha = ''
+  } finally {
+    captchaLoading.value = false
+  }
+}
 
 function switchRole(role: 'STUDENT' | 'ADMIN') {
   form.role = role
@@ -23,17 +39,33 @@ function switchRole(role: 'STUDENT' | 'ADMIN') {
 async function submit() {
   loading.value = true
   try {
-    const result = await auth.login(form)
+    const result = await auth.login({ ...form, captchaId: captchaId.value })
     ElMessage.success('登录成功')
     router.push(result.role === 'ADMIN' ? '/admin/dashboard' : '/student/home')
+  } catch {
+    // 错误提示已由请求拦截器统一处理；旧验证码已被服务端消费，需刷新
+    await loadCaptcha()
   } finally {
     loading.value = false
   }
 }
+
+onMounted(loadCaptcha)
 </script>
 
 <template>
   <main class="login-page">
+    <div class="bubbles" aria-hidden="true">
+      <span style="left:6%;width:54px;height:54px;animation-duration:19s;animation-delay:0s"></span>
+      <span style="left:18%;width:26px;height:26px;animation-duration:14s;animation-delay:3s"></span>
+      <span style="left:32%;width:72px;height:72px;animation-duration:24s;animation-delay:1s"></span>
+      <span style="left:46%;width:34px;height:34px;animation-duration:16s;animation-delay:6s"></span>
+      <span style="left:60%;width:48px;height:48px;animation-duration:21s;animation-delay:2s"></span>
+      <span style="left:72%;width:30px;height:30px;animation-duration:15s;animation-delay:5s"></span>
+      <span style="left:84%;width:60px;height:60px;animation-duration:23s;animation-delay:0s"></span>
+      <span style="left:94%;width:24px;height:24px;animation-duration:13s;animation-delay:4s"></span>
+    </div>
+
     <section class="login-intro">
       <div class="system-mark">Campus Onboarding</div>
       <h1>高校迎新管理系统</h1>
@@ -59,8 +91,15 @@ async function submit() {
         </el-form-item>
         <el-form-item label="验证码">
           <div class="captcha-row">
-            <el-input v-model="form.captcha" size="large" />
-            <div class="captcha-box">6666</div>
+            <el-input v-model="form.captcha" size="large" placeholder="输入计算结果" />
+            <div
+              class="captcha-box"
+              :title="captchaLoading ? '加载中...' : '点击刷新验证码'"
+              v-loading="captchaLoading"
+              @click="loadCaptcha"
+            >
+              {{ captchaQuestion || '加载中...' }}
+            </div>
           </div>
         </el-form-item>
         <el-button type="primary" size="large" class="login-button" :loading="loading" @click="submit">
@@ -78,6 +117,8 @@ async function submit() {
 
 <style scoped>
 .login-page {
+  position: relative;
+  overflow: hidden;
   min-height: 100vh;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 420px;
@@ -88,6 +129,47 @@ async function submit() {
     linear-gradient(120deg, rgba(37, 111, 115, 0.12), transparent 42%),
     linear-gradient(300deg, rgba(183, 121, 31, 0.16), transparent 38%),
     var(--app-bg);
+}
+
+/* 气泡背景：从底部缓慢上浮，不阻挡交互 */
+.bubbles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.bubbles span {
+  position: absolute;
+  bottom: -120px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, rgba(37, 111, 115, 0.22), rgba(37, 111, 115, 0.06));
+  box-shadow: inset 0 0 8px rgba(255, 255, 255, 0.4);
+  animation-name: bubble-float;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+@keyframes bubble-float {
+  0% {
+    transform: translateY(0) scale(1);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 0.85;
+  }
+  100% {
+    transform: translateY(-112vh) scale(1.25);
+    opacity: 0;
+  }
+}
+
+.login-intro {
+  position: relative;
+  z-index: 1;
 }
 
 .login-intro h1 {
@@ -126,6 +208,8 @@ async function submit() {
 }
 
 .login-panel {
+  position: relative;
+  z-index: 1;
   background: #fff;
   border: 1px solid var(--app-border);
   border-radius: 8px;
@@ -148,7 +232,7 @@ async function submit() {
 .captcha-row {
   width: 100%;
   display: grid;
-  grid-template-columns: 1fr 104px;
+  grid-template-columns: 1fr 132px;
   gap: 10px;
 }
 
@@ -162,6 +246,14 @@ async function submit() {
   color: var(--app-primary);
   background: var(--app-primary-soft);
   font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  transition: opacity 0.2s;
+}
+
+.captcha-box:hover {
+  opacity: 0.8;
 }
 
 .login-button {

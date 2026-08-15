@@ -24,6 +24,7 @@ export interface Student {
   idCard?: string
   address?: string
   paid?: boolean
+  verified?: boolean
   checkedIn?: boolean
   bedId?: number
   paymentStatuses?: StudentFeeStatus[]
@@ -42,6 +43,14 @@ export interface College {
 export interface Major {
   id?: number
   collegeId: number
+  name: string
+  sortNo: number
+  enabled: boolean
+}
+
+export interface SchoolClass {
+  id?: number
+  majorId: number
   name: string
   sortNo: number
   enabled: boolean

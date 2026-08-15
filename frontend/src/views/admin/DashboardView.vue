@@ -6,9 +6,13 @@ import { adminApi } from '@/api/modules'
 const loading = ref(false)
 const stats = ref<Record<string, any>>({})
 const collegeChartRef = ref<HTMLDivElement>()
-const paymentChartRef = ref<HTMLDivElement>()
+const collegeCountChartRef = ref<HTMLDivElement>()
+const checkinPieChartRef = ref<HTMLDivElement>()
+const genderPieChartRef = ref<HTMLDivElement>()
 let collegeChart: echarts.ECharts | null = null
-let paymentChart: echarts.ECharts | null = null
+let collegeCountChart: echarts.ECharts | null = null
+let checkinPieChart: echarts.ECharts | null = null
+let genderPieChart: echarts.ECharts | null = null
 
 const metrics = [
   { key: 'totalStudents', label: '总人数' },
@@ -51,23 +55,71 @@ function renderCharts() {
     })
   }
 
-  if (paymentChartRef.value) {
-    paymentChart ||= echarts.init(paymentChartRef.value)
-    const rows = stats.value.paymentTrend || []
-    paymentChart.setOption({
+  if (collegeCountChartRef.value) {
+    collegeCountChart ||= echarts.init(collegeCountChartRef.value)
+    const rows = stats.value.collegeCheckin || []
+    collegeCountChart.setOption({
       tooltip: { trigger: 'axis' },
-      grid: { left: 36, right: 16, top: 26, bottom: 36 },
-      xAxis: { type: 'category', data: rows.map((row: any) => String(row.day || '').slice(0, 10)) },
-      yAxis: { type: 'value' },
+      grid: { left: 40, right: 16, top: 26, bottom: 48 },
+      xAxis: {
+        type: 'category',
+        data: rows.map((row: any) => row.college || ''),
+        axisLabel: { interval: 0, rotate: rows.length > 4 ? 24 : 0 }
+      },
+      yAxis: { type: 'value', minInterval: 1 },
       series: [{
-        name: '缴费笔数',
-        type: 'line',
-        smooth: true,
-        symbolSize: 7,
-        data: rows.map((row: any) => Number(row.count || 0)),
-        lineStyle: { color: '#b7791f', width: 3 },
-        itemStyle: { color: '#b7791f' },
-        areaStyle: { color: 'rgba(183, 121, 31, 0.14)' }
+        name: '新生人数',
+        type: 'bar',
+        barWidth: 30,
+        data: rows.map((row: any) => Number(row.total || 0)),
+        itemStyle: { color: '#256f73', borderRadius: [4, 4, 0, 0] }
+      }]
+    })
+  }
+
+  if (checkinPieChartRef.value) {
+    checkinPieChart ||= echarts.init(checkinPieChartRef.value)
+    const total = Number(stats.value.totalStudents || 0)
+    const checkedIn = Number(stats.value.checkedInStudents || 0)
+    const notCheckedIn = Math.max(total - checkedIn, 0)
+    checkinPieChart.setOption({
+      tooltip: { trigger: 'item', formatter: '{b}: {c}人 ({d}%)' },
+      legend: { bottom: 0 },
+      series: [{
+        name: '报到情况',
+        type: 'pie',
+        radius: ['40%', '65%'],
+        center: ['50%', '45%'],
+        avoidLabelOverlap: true,
+        label: { formatter: '{b}\n{c}人' },
+        data: [
+          { value: checkedIn, name: '已报到', itemStyle: { color: '#256f73' } },
+          { value: notCheckedIn, name: '未报到', itemStyle: { color: '#c0c4cc' } }
+        ]
+      }]
+    })
+  }
+
+  if (genderPieChartRef.value) {
+    genderPieChart ||= echarts.init(genderPieChartRef.value)
+    const rows: any[] = stats.value.genderDistribution || []
+    const colorMap: Record<string, string> = { '男': '#409eff', '女': '#f472b6' }
+    const nameMap: Record<string, string> = { '男': '男生', '女': '女生' }
+    genderPieChart.setOption({
+      tooltip: { trigger: 'item', formatter: '{b}: {c}人 ({d}%)' },
+      legend: { bottom: 0 },
+      series: [{
+        name: '男女占比',
+        type: 'pie',
+        radius: ['40%', '65%'],
+        center: ['50%', '45%'],
+        avoidLabelOverlap: true,
+        label: { formatter: '{b}\n{c}人' },
+        data: rows.map((row: any) => ({
+          value: Number(row.count || 0),
+          name: nameMap[row.gender] || row.gender,
+          itemStyle: { color: colorMap[row.gender] || '#256f73' }
+        }))
       }]
     })
   }
@@ -75,7 +127,9 @@ function renderCharts() {
 
 function resizeCharts() {
   collegeChart?.resize()
-  paymentChart?.resize()
+  collegeCountChart?.resize()
+  checkinPieChart?.resize()
+  genderPieChart?.resize()
 }
 
 onMounted(() => {
@@ -86,7 +140,9 @@ onMounted(() => {
 onBeforeUnmount(() => {
   window.removeEventListener('resize', resizeCharts)
   collegeChart?.dispose()
-  paymentChart?.dispose()
+  collegeCountChart?.dispose()
+  checkinPieChart?.dispose()
+  genderPieChart?.dispose()
 })
 </script>
 
@@ -112,8 +168,19 @@ onBeforeUnmount(() => {
         <div ref="collegeChartRef" class="chart" />
       </div>
       <div class="panel">
-        <div class="panel-title">近 7 日缴费趋势</div>
-        <div ref="paymentChartRef" class="chart" />
+        <div class="panel-title">报到情况</div>
+        <div ref="checkinPieChartRef" class="chart" />
+      </div>
+    </section>
+
+    <section class="chart-grid">
+      <div class="panel">
+        <div class="panel-title">各院系新生人数</div>
+        <div ref="collegeCountChartRef" class="chart" />
+      </div>
+      <div class="panel">
+        <div class="panel-title">男女占比</div>
+        <div ref="genderPieChartRef" class="chart" />
       </div>
     </section>
   </div>

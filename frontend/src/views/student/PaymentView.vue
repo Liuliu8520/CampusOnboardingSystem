@@ -53,7 +53,10 @@ onMounted(loadData)
 <template>
   <div class="page" v-loading="loading">
     <div class="page-actions">
-      <el-button type="primary" :icon="CreditCard" :loading="actionLoading" @click="pay">模拟支付</el-button>
+      <el-tooltip v-if="!profile?.student.verified" content="请先完成资料核验" placement="top">
+        <el-button type="primary" :icon="CreditCard" :loading="actionLoading" :disabled="!profile?.student.verified" @click="pay">模拟支付</el-button>
+      </el-tooltip>
+      <el-button v-else type="primary" :icon="CreditCard" :loading="actionLoading" @click="pay">模拟支付</el-button>
     </div>
 
     <section class="panel">

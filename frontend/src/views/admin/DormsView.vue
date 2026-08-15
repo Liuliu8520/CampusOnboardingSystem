@@ -54,7 +54,7 @@ async function loadData() {
     const [buildingData, occupancyData, majorData] = await Promise.all([
       adminApi.buildings(),
       adminApi.occupancy(),
-      adminApi.majors()
+      adminApi.majors({ enabled: true })
     ])
     buildings.value = buildingData
     occupancy.value = occupancyData

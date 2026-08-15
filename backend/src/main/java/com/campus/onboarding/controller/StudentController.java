@@ -6,9 +6,11 @@ import com.campus.onboarding.dto.PaymentRequest;
 import com.campus.onboarding.dto.StudentProfileResponse;
 import com.campus.onboarding.entity.Announcement;
 import com.campus.onboarding.entity.QualificationModification;
+import com.campus.onboarding.entity.Student;
 import com.campus.onboarding.service.StudentWorkflowService;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -39,6 +41,11 @@ public class StudentController {
     @PostMapping("/qualification/apply")
     public Result<QualificationModification> apply(@Valid @RequestBody ModificationApplyRequest request) {
         return Result.ok(studentWorkflowService.applyModification(request));
+    }
+
+    @PostMapping("/qualification/confirm")
+    public Result<Student> confirm() {
+        return Result.ok(studentWorkflowService.confirmQualification());
     }
 
     @GetMapping("/payment/items")
@@ -74,5 +81,10 @@ public class StudentController {
     @GetMapping("/announcements")
     public Result<List<Announcement>> announcements() {
         return Result.ok(studentWorkflowService.publishedAnnouncements());
+    }
+
+    @GetMapping("/announcements/{id}")
+    public Result<Announcement> announcement(@PathVariable Long id) {
+        return Result.ok(studentWorkflowService.publishedAnnouncement(id));
     }
 }

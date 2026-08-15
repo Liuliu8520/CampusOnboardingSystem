@@ -6,6 +6,7 @@ public record LoginRequest(
         @NotBlank String role,
         @NotBlank String username,
         @NotBlank String password,
-        @NotBlank String captcha
+        @NotBlank String captcha,
+        String captchaId
 ) {
 }

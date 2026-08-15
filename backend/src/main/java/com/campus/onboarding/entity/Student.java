@@ -16,15 +16,17 @@ public class Student {
     private String studentId;
     private String name;
     private String gender;
-    private String college;
-    private String major;
-    private String className;
+    private Long collegeId;
+    private Long majorId;
+    private Long classId;
     private String phone;
     private String idCard;
     private String address;
     private String password;
     @TableField("is_paid")
     private Boolean paid;
+    @TableField("is_verified")
+    private Boolean verified;
     @TableField("is_checked_in")
     private Boolean checkedIn;
     private Long bedId;
@@ -34,6 +36,12 @@ public class Student {
     private Integer requiredFeePaidCount;
     @TableField(exist = false)
     private Integer requiredFeeTotal;
+    @TableField(exist = false)
+    private String college;
+    @TableField(exist = false)
+    private String major;
+    @TableField(exist = false)
+    private String className;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
 
@@ -69,28 +77,28 @@ public class Student {
         this.gender = gender;
     }
 
-    public String getCollege() {
-        return college;
+    public Long getCollegeId() {
+        return collegeId;
     }
 
-    public void setCollege(String college) {
-        this.college = college;
+    public void setCollegeId(Long collegeId) {
+        this.collegeId = collegeId;
     }
 
-    public String getMajor() {
-        return major;
+    public Long getMajorId() {
+        return majorId;
     }
 
-    public void setMajor(String major) {
-        this.major = major;
+    public void setMajorId(Long majorId) {
+        this.majorId = majorId;
     }
 
-    public String getClassName() {
-        return className;
+    public Long getClassId() {
+        return classId;
     }
 
-    public void setClassName(String className) {
-        this.className = className;
+    public void setClassId(Long classId) {
+        this.classId = classId;
     }
 
     public String getPhone() {
@@ -133,6 +141,14 @@ public class Student {
         this.paid = paid;
     }
 
+    public Boolean getVerified() {
+        return verified;
+    }
+
+    public void setVerified(Boolean verified) {
+        this.verified = verified;
+    }
+
     public Boolean getCheckedIn() {
         return checkedIn;
     }
@@ -171,6 +187,30 @@ public class Student {
 
     public void setRequiredFeeTotal(Integer requiredFeeTotal) {
         this.requiredFeeTotal = requiredFeeTotal;
+    }
+
+    public String getCollege() {
+        return college;
+    }
+
+    public void setCollege(String college) {
+        this.college = college;
+    }
+
+    public String getMajor() {
+        return major;
+    }
+
+    public void setMajor(String major) {
+        this.major = major;
+    }
+
+    public String getClassName() {
+        return className;
+    }
+
+    public void setClassName(String className) {
+        this.className = className;
     }
 
     public LocalDateTime getCreateTime() {
