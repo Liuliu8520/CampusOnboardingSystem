@@ -2,6 +2,46 @@
 
 基于 Spring Boot 3、Vue 3、Element Plus 和 MySQL 8 的前后端分离高校迎新管理系统。项目围绕新生入学报到的真实流程设计，覆盖学生端多步骤报到和管理员端迎新业务管理，适合课程设计、毕业设计、答辩演示和简历项目展示。
 
+## 页面截图
+
+- 登录页
+
+  <img width="1763" height="844" alt="login" src="https://github.com/user-attachments/assets/c73c165f-505d-41cd-82f3-c869f8d1ffa6" />
+
+- 学生端
+  - 主页
+  
+    <img width="1763" height="909" alt="home" src="https://github.com/user-attachments/assets/e8d146b7-232b-4e6c-a71a-150e8e3c000a" />
+    
+  - 个人信息页
+  
+    <img width="1763" height="844" alt="qualification" src="https://github.com/user-attachments/assets/6a725fa8-827d-41c0-a8ae-41a5e88f8a9e" />
+
+  - 缴费页
+
+    <img width="1763" height="844" alt="payment" src="https://github.com/user-attachments/assets/e9644663-f4c6-4501-b0c7-825efe32888a" />
+
+  - 报道页
+  
+    <img width="1763" height="844" alt="report" src="https://github.com/user-attachments/assets/4943c8f6-c331-4bc0-9c9c-16862ac5cde5" />
+
+  - 通知页
+
+    <img width="1763" height="844" alt="announcement" src="https://github.com/user-attachments/assets/c09d48f0-a7f8-49ce-b4d0-99e4492e19e2" />
+
+  - 通知详情页
+
+    <img width="1763" height="844" alt="detail" src="https://github.com/user-attachments/assets/11852137-fc72-40ac-b7f8-0f480d9c9676" />
+
+- 管理员端
+  - 主页
+    <img width="1763" height="1225" alt="admindashboard" src="https://github.com/user-attachments/assets/5abf3495-6110-43a2-bb65-12828d720ead" />
+
+  - 管理类
+    <img width="1763" height="844" alt="academics" src="https://github.com/user-attachments/assets/416df500-5fd4-4e22-a23d-9344d00f0761" />
+
+    <img width="1763" height="1689" alt="image" src="https://github.com/user-attachments/assets/69a223c3-c226-4432-a143-f8734472c18d" />
+
 ## 技术栈
 
 | 层级 | 技术 |
