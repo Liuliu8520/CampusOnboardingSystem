@@ -68,7 +68,7 @@ onMounted(loadData)
         <el-descriptions-item label="班级">{{ profile?.student.className || '-' }}</el-descriptions-item>
       </el-descriptions>
       <div class="status-row">
-        <el-tag :type="profile?.student.paid ? 'success' : 'warning'">
+        <el-tag :type="profile?.student.paid ? 'success' : 'danger'">
           {{ profile?.student.paid ? '必缴已完成' : `还有 ${requiredUnpaidCount} 项必缴未完成` }}
         </el-tag>
       </div>

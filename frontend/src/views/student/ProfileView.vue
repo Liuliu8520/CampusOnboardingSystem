@@ -46,7 +46,7 @@ onMounted(loadData)
         <el-descriptions-item label="身份证号">{{ profile.student.idCard || '-' }}</el-descriptions-item>
         <el-descriptions-item label="家庭地址" :span="2">{{ profile.student.address || '-' }}</el-descriptions-item>
         <el-descriptions-item label="缴费状态">
-          <el-tag :type="profile.student.paid ? 'success' : 'warning'">{{ profile.student.paid ? '已完成必缴' : '未完成' }}</el-tag>
+          <el-tag :type="profile.student.paid ? 'success' : 'danger'">{{ profile.student.paid ? '已完成必缴' : '未完成' }}</el-tag>
         </el-descriptions-item>
         <el-descriptions-item label="报到状态">
           <el-tag :type="profile.student.checkedIn ? 'success' : 'info'">{{ profile.student.checkedIn ? '已报到' : '未报到' }}</el-tag>
