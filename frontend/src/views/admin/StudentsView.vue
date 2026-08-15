@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Check, Delete, Edit, Plus, RefreshLeft, Tickets, View } from '@element-plus/icons-vue'
+import { Check, Close, Delete, Edit, Plus, RefreshLeft, Tickets, View } from '@element-plus/icons-vue'
 import { adminApi } from '@/api/modules'
 import type { College, Major, Student, StudentFeeStatus } from '@/types'
 
@@ -306,9 +306,9 @@ onMounted(async () => {
             </el-tooltip>
             <el-tooltip :content="row.checkedIn ? '取消报到' : '确认报到'">
               <el-button
-                :icon="Check"
+                :icon="row.checkedIn ? Close : Check"
                 circle
-                :type="row.checkedIn ? 'warning' : 'success'"
+                :type="row.checkedIn ? 'danger' : 'success'"
                 @click="toggleCheckin(row)"
               />
             </el-tooltip>
