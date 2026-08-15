@@ -256,19 +256,28 @@ public class AdminWorkflowService {
         if (building == null) {
             throw new BizException("楼栋不存在");
         }
-        if (!building.getGender().equals(request.gender())) {
-            throw new BizException("房间性别必须与楼栋性别一致");
-        }
         validateMajor(request.major());
-        List<DormRoom> rooms = new ArrayList<>();
+
+        List<String> newRoomNos = new ArrayList<>();
         for (int i = 0; i < request.count(); i++) {
+            newRoomNos.add(String.valueOf(request.startNo() + i));
+        }
+        long dupCount = roomMapper.selectCount(new QueryWrapper<DormRoom>()
+                .eq("building_id", request.buildingId())
+                .in("room_no", newRoomNos));
+        if (dupCount > 0) {
+            throw new BizException("该楼栋已存在部分房号，请检查起始房号或数量");
+        }
+
+        List<DormRoom> rooms = new ArrayList<>();
+        for (String roomNo : newRoomNos) {
             DormRoom room = new DormRoom();
             room.setBuildingId(request.buildingId());
-            room.setRoomNo(String.valueOf(request.startNo() + i));
+            room.setRoomNo(roomNo);
             room.setCapacity(request.capacity());
             room.setOccupiedCount(0);
             room.setMajor(request.major());
-            room.setGender(request.gender());
+            room.setGender(building.getGender());
             roomMapper.insert(room);
             for (int bedIndex = 1; bedIndex <= request.capacity(); bedIndex++) {
                 DormBed bed = new DormBed();

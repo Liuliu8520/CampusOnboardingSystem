@@ -238,12 +238,6 @@ onMounted(loadData)
             <el-option v-for="item in roomMajorOptions" :key="item.id" :label="item.name" :value="item.name" />
           </el-select>
         </el-form-item>
-        <el-form-item label="性别">
-          <el-select v-model="roomForm.gender" class="wide-input">
-            <el-option label="男" value="男" />
-            <el-option label="女" value="女" />
-          </el-select>
-        </el-form-item>
         <el-form-item label="起始房号"><el-input-number v-model="roomForm.startNo" :min="1" /></el-form-item>
         <el-form-item label="房间数量"><el-input-number v-model="roomForm.count" :min="1" :max="50" /></el-form-item>
         <el-form-item label="床位容量"><el-input-number v-model="roomForm.capacity" :min="1" :max="8" /></el-form-item>
